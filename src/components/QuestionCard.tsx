@@ -1,6 +1,7 @@
 "use client";
 
 import type { StepConfig, Answers } from "@/lib/wizardSteps";
+import { ui, type Locale } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,23 +13,25 @@ function Field({
   step,
   answers,
   setAnswer,
+  locale,
 }: {
   step: StepConfig;
   answers: Answers;
   setAnswer: SetAnswer;
+  locale: Locale;
 }) {
   switch (step.kind) {
     case "name-split":
       return (
         <div className="flex flex-col gap-3 sm:flex-row">
           <Input
-            placeholder="First Name"
+            placeholder={ui.firstNamePlaceholder[locale]}
             value={answers.firstName}
             onChange={(e) => setAnswer("firstName", e.target.value)}
             autoFocus
           />
           <Input
-            placeholder="Last Name"
+            placeholder={ui.lastNamePlaceholder[locale]}
             value={answers.lastName}
             onChange={(e) => setAnswer("lastName", e.target.value)}
           />
@@ -117,7 +120,7 @@ function Field({
           autoFocus
         >
           <option value="" disabled>
-            Selecciona…
+            {ui.selectPlaceholder[locale]}
           </option>
           {step.options?.map((option) => (
             <option key={option} value={option}>
@@ -148,6 +151,7 @@ export function QuestionCard({
   answers,
   setAnswer,
   error,
+  locale,
   canGoPrevious,
   isLastStep,
   pending,
@@ -158,6 +162,7 @@ export function QuestionCard({
   answers: Answers;
   setAnswer: SetAnswer;
   error?: string;
+  locale: Locale;
   canGoPrevious: boolean;
   isLastStep: boolean;
   pending: boolean;
@@ -165,27 +170,34 @@ export function QuestionCard({
   onPrevious: () => void;
 }) {
   return (
-    <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           onNext();
         }}
       >
-        <div className="px-6 py-10 text-center sm:px-10">
+        {/* Alto mínimo fijo -- así la tarjeta no cambia de tamaño entre
+            preguntas ni cuando aparece un mensaje de error (antes "saltaba"
+            al crecer el texto de error). */}
+        <div className="flex min-h-[560px] flex-col justify-center px-6 py-10 text-center sm:px-12">
           <h2 className="text-2xl font-medium text-neutral-800 sm:text-3xl">
-            {step.title}
+            {step.title[locale]}
             <span className="ml-1 text-red-500">*</span>
           </h2>
           {step.subtitle && (
-            <p className="mt-1 text-neutral-400">{step.subtitle}</p>
+            <p className="mt-1 text-neutral-400">{step.subtitle[locale]}</p>
           )}
 
           <div className="mt-8 text-left">
-            <Field step={step} answers={answers} setAnswer={setAnswer} />
+            <Field step={step} answers={answers} setAnswer={setAnswer} locale={locale} />
           </div>
 
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          {/* Siempre montado (con o sin texto) para reservar el espacio y
+              que el error no empuje el layout. */}
+          <p className="mt-3 min-h-[1.5rem] text-sm text-red-600">
+            {error ?? ""}
+          </p>
         </div>
 
         <div className="grid grid-cols-2">
@@ -195,14 +207,14 @@ export function QuestionCard({
             disabled={!canGoPrevious}
             className="flex items-center justify-start gap-2 bg-[#e0206a] px-6 py-5 font-semibold uppercase tracking-wide text-white/70 transition-colors enabled:hover:bg-[#c81b5d] disabled:cursor-not-allowed disabled:text-white/40"
           >
-            <span aria-hidden>←</span> Previous
+            <span aria-hidden>←</span> {ui.previous[locale]}
           </button>
           <button
             type="submit"
             disabled={pending}
             className="flex items-center justify-end gap-2 bg-[#ff2d78] px-6 py-5 font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[#e6266c] disabled:opacity-60"
           >
-            {pending ? "Enviando…" : isLastStep ? "Submit" : "Next"}{" "}
+            {pending ? ui.sending[locale] : isLastStep ? ui.submit[locale] : ui.next[locale]}{" "}
             <span aria-hidden>→</span>
           </button>
         </div>

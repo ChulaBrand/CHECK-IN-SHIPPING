@@ -1,10 +1,10 @@
-import type { z } from "zod";
 import {
   LOADING_TYPES,
   PRODUCE_TYPES,
   LOAD_ACCOMMODATION_OPTIONS,
 } from "@/lib/options";
-import { fieldSchemas } from "@/lib/validation";
+import { buildFieldSchemas } from "@/lib/validation";
+import type { Locale, LocalizedText } from "@/lib/i18n";
 
 type ArrayAnswerKey = "loadAccommodation" | "produceTypes";
 
@@ -42,8 +42,8 @@ export type FieldKind = "name-split" | "text" | "tel" | "radio" | "select" | "ch
 
 export type StepConfig = {
   id: string;
-  title: string;
-  subtitle?: string;
+  title: LocalizedText;
+  subtitle?: LocalizedText;
   kind: FieldKind;
   options?: readonly string[];
   // Para "text" | "tel" | "radio" | "select": qué campo de Answers edita
@@ -51,22 +51,25 @@ export type StepConfig = {
   answerKey?: Exclude<keyof Answers, ArrayAnswerKey>;
   // Para "checkbox-group": a cuál de los campos de arreglo apunta.
   checkboxKey?: ArrayAnswerKey;
-  // Devuelve un mensaje de error, o undefined si la respuesta es válida.
-  validate: (answers: Answers) => string | undefined;
+  // Devuelve un mensaje de error (en el idioma dado), o undefined si la
+  // respuesta es válida.
+  validate: (answers: Answers, locale: Locale) => string | undefined;
 };
 
-const firstOrLastNameError = (answers: Answers) => {
-  const first = fieldSchemas.firstName.safeParse(answers.firstName);
+const firstOrLastNameError = (answers: Answers, locale: Locale) => {
+  const schemas = buildFieldSchemas(locale);
+  const first = schemas.firstName.safeParse(answers.firstName);
   if (!first.success) return first.error.issues[0]?.message;
-  const last = fieldSchemas.lastName.safeParse(answers.lastName);
+  const last = schemas.lastName.safeParse(answers.lastName);
   if (!last.success) return last.error.issues[0]?.message;
   return undefined;
 };
 
 const fieldError =
-  <K extends keyof Answers>(key: K, schema: z.ZodType<Answers[K]>) =>
-  (answers: Answers) => {
-    const result = schema.safeParse(answers[key]);
+  <K extends keyof Answers>(key: K) =>
+  (answers: Answers, locale: Locale) => {
+    const schemas = buildFieldSchemas(locale);
+    const result = schemas[key].safeParse(answers[key]);
     return result.success ? undefined : result.error.issues[0]?.message;
   };
 
@@ -75,34 +78,34 @@ const fieldError =
 export const COMMON_STEPS: StepConfig[] = [
   {
     id: "name",
-    title: "First and Last Name",
+    title: { en: "First and Last Name", es: "Nombre y Apellido" },
     kind: "name-split",
     validate: firstOrLastNameError,
   },
   {
     id: "phone",
-    title: "Phone Number",
-    subtitle: "Número de teléfono",
+    title: { en: "Phone Number", es: "Número de Teléfono" },
     kind: "tel",
     answerKey: "phoneNumber",
-    validate: fieldError("phoneNumber", fieldSchemas.phoneNumber),
+    validate: fieldError("phoneNumber"),
   },
   {
     id: "truck",
-    title: "Truck Name / Company Name",
-    subtitle: "Nombre de la compañía",
+    title: {
+      en: "Truck Name / Company Name",
+      es: "Nombre del Camión / Empresa",
+    },
     kind: "text",
     answerKey: "truckOrCompanyName",
-    validate: fieldError("truckOrCompanyName", fieldSchemas.truckOrCompanyName),
+    validate: fieldError("truckOrCompanyName"),
   },
   {
     id: "loadingType",
-    title: "Loading or Unloading?",
-    subtitle: "¿Viene a cargar o a descargar?",
+    title: { en: "Loading or Unloading?", es: "¿Cargar o Descargar?" },
     kind: "radio",
     options: LOADING_TYPES,
     answerKey: "loadingType",
-    validate: fieldError("loadingType", fieldSchemas.loadingType),
+    validate: fieldError("loadingType"),
   },
 ];
 
@@ -110,34 +113,35 @@ export const COMMON_STEPS: StepConfig[] = [
 export const LOADING_BRANCH_STEPS: StepConfig[] = [
   {
     id: "trailerPlates",
-    title: "Trailer Plates",
-    subtitle: "Placas del remolque",
+    title: { en: "Trailer Plates", es: "Placas del Remolque" },
     kind: "text",
     answerKey: "trailerPlates",
-    validate: fieldError("trailerPlates", fieldSchemas.trailerPlates),
+    validate: fieldError("trailerPlates"),
   },
   {
     id: "driversLicense",
-    title: "Driver's License",
-    subtitle: "Licencia de conducir",
+    title: { en: "Driver's License", es: "Licencia de Conducir" },
     kind: "text",
     answerKey: "driversLicense",
-    validate: fieldError("driversLicense", fieldSchemas.driversLicense),
+    validate: fieldError("driversLicense"),
   },
   {
     id: "spNumberOrder2",
-    title: "SP # / Order #",
+    title: { en: "SP # / Order #", es: "SP # / Order #" },
     kind: "text",
     answerKey: "spNumberOrder2",
-    validate: fieldError("spNumberOrder2", fieldSchemas.spNumberOrder2),
+    validate: fieldError("spNumberOrder2"),
   },
   {
     id: "loadAccommodation",
-    title: "Load Accomodation / Acomodo de la Carga",
+    title: {
+      en: "Load Accomodation / Acomodo de la Carga",
+      es: "Load Accomodation / Acomodo de la Carga",
+    },
     kind: "checkbox-group",
     options: LOAD_ACCOMMODATION_OPTIONS,
     checkboxKey: "loadAccommodation",
-    validate: fieldError("loadAccommodation", fieldSchemas.loadAccommodation),
+    validate: fieldError("loadAccommodation"),
   },
 ];
 
@@ -145,29 +149,28 @@ export const LOADING_BRANCH_STEPS: StepConfig[] = [
 export const UNLOADING_BRANCH_STEPS: StepConfig[] = [
   {
     id: "unitNumber",
-    title: "# de Económico o # de Caja",
+    title: { en: "Unit # / Box #", es: "# de Económico o # de Caja" },
     kind: "text",
     answerKey: "unitNumber",
-    validate: fieldError("unitNumber", fieldSchemas.unitNumber),
+    validate: fieldError("unitNumber"),
   },
   {
     id: "produceTypes",
-    title: "Que viene a descargar",
-    subtitle: "¿Qué viene a descargar?",
+    title: { en: "What Are You Unloading?", es: "Qué Viene a Descargar" },
     kind: "checkbox-group",
     options: PRODUCE_TYPES,
     checkboxKey: "produceTypes",
-    validate: fieldError("produceTypes", fieldSchemas.produceTypes),
+    validate: fieldError("produceTypes"),
   },
 ];
 
-// Pantalla extra que solo aparece si eligieron "Otro" en produceType.
+// Pantalla extra que solo aparece si eligieron "Otro" en produceTypes.
 export const PRODUCE_OTHER_STEP: StepConfig = {
   id: "produceTypeOther",
-  title: "Especifica el producto",
+  title: { en: "Specify the Product", es: "Especifica el Producto" },
   kind: "text",
   answerKey: "produceTypeOther",
-  validate: fieldError("produceTypeOther", fieldSchemas.produceTypeOther),
+  validate: fieldError("produceTypeOther"),
 };
 
 // Calcula la secuencia de pantallas activa según lo que se ha respondido

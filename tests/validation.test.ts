@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { fieldSchemas } from "@/lib/validation";
+import { buildFieldSchemas } from "@/lib/validation";
 import { emptyAnswers, getActiveSteps } from "@/lib/wizardSteps";
+
+const fieldSchemas = buildFieldSchemas("en");
+
+describe("buildFieldSchemas", () => {
+  it("translates error messages per locale", () => {
+    const en = buildFieldSchemas("en").phoneNumber.safeParse("123");
+    const es = buildFieldSchemas("es").phoneNumber.safeParse("123");
+    expect(en.success).toBe(false);
+    expect(es.success).toBe(false);
+    if (!en.success && !es.success) {
+      expect(en.error.issues[0]?.message).toMatch(/digits/i);
+      expect(es.error.issues[0]?.message).toMatch(/dígitos/i);
+    }
+  });
+});
 
 describe("fieldSchemas", () => {
   it("rejects empty required text fields", () => {

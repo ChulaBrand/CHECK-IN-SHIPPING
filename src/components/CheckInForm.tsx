@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { QuestionCard } from "@/components/QuestionCard";
 import { ProgressDots } from "@/components/ProgressDots";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { emptyAnswers, getActiveSteps, type Answers } from "@/lib/wizardSteps";
 import { serializeMultiSelect } from "@/lib/utils";
 import { assetPath } from "@/lib/asset";
+import { ui, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
 function CornerLogo() {
@@ -24,9 +26,54 @@ function CornerLogo() {
 // Se define al hacer el build -- ver README para cómo configurarla.
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL ?? "";
 
+// Si el envío falla (wifi inestable en la caseta), reintenta un par de veces
+// antes de darnos por vencidos -- así una racha corta sin señal no pierde un
+// check-in real.
+const SUBMIT_ATTEMPTS = 3;
+const SUBMIT_TIMEOUT_MS = 10_000;
+
+// Cuánto tiempo sin tocar la pantalla en una pregunta antes de recargar la
+// página sola -- evita que se quede un formulario a medio llenar bloqueando
+// al siguiente camión, y de paso limpia cualquier estado raro de la pestaña.
+const IDLE_RELOAD_MS = 3 * 60 * 1000;
+
+// Cuánto se queda la pantalla de éxito antes de volver sola al inicio.
+const SUCCESS_RETURN_MS = 5000;
+
 type Phase = "welcome" | "question" | "success";
 
+async function submitWithRetry(
+  url: string,
+  payload: Record<string, string>
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= SUBMIT_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SUBMIT_TIMEOUT_MS);
+    try {
+      // mode: "no-cors" + text/plain: Apps Script no maneja bien CORS con
+      // JSON, este es el patrón estándar para mandarle datos desde el
+      // navegador. Efecto: no podemos leer la respuesta (no sabemos con
+      // certeza si Apps Script tuvo éxito), solo si la petición salió.
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      return true;
+    } catch {
+      if (attempt === SUBMIT_ATTEMPTS) return false;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  return false;
+}
+
 export function CheckInForm() {
+  const [locale, setLocale] = useState<Locale>("en");
   const [phase, setPhase] = useState<Phase>("welcome");
   const [answers, setAnswers] = useState<Answers>(emptyAnswers);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,6 +89,49 @@ export function CheckInForm() {
     setError(undefined);
   }
 
+  const reset = useCallback(() => {
+    setAnswers(emptyAnswers);
+    setCurrentIndex(0);
+    setError(undefined);
+    setSubmitFailed(false);
+    setPhase("welcome");
+  }, []);
+
+  // Vuelve sola al inicio unos segundos después de mostrar éxito -- es un
+  // kiosco, el siguiente chofer no debería tener que tocar nada.
+  useEffect(() => {
+    if (phase !== "success") return;
+    const timer = setTimeout(reset, SUCCESS_RETURN_MS);
+    return () => clearTimeout(timer);
+  }, [phase, reset]);
+
+  // Si nadie toca la pantalla mientras hay una pregunta a medio llenar,
+  // recarga la página sola -- así nunca se queda un formulario abandonado
+  // bloqueando al siguiente camión.
+  useEffect(() => {
+    if (phase !== "question") return;
+    let idleTimer: ReturnType<typeof setTimeout>;
+    function scheduleReload() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => window.location.reload(), IDLE_RELOAD_MS);
+    }
+    const events: (keyof WindowEventMap)[] = [
+      "pointerdown",
+      "keydown",
+      "touchstart",
+    ];
+    events.forEach((eventName) =>
+      window.addEventListener(eventName, scheduleReload)
+    );
+    scheduleReload();
+    return () => {
+      clearTimeout(idleTimer);
+      events.forEach((eventName) =>
+        window.removeEventListener(eventName, scheduleReload)
+      );
+    };
+  }, [phase]);
+
   async function submit() {
     setSubmitFailed(false);
 
@@ -54,39 +144,29 @@ export function CheckInForm() {
     }
 
     setPending(true);
-    try {
-      // mode: "no-cors" + text/plain: Apps Script no maneja bien CORS con
-      // JSON, este es el patrón estándar para mandarle datos desde el
-      // navegador. Efecto: no podemos leer la respuesta (no sabemos con
-      // certeza si Apps Script tuvo éxito), solo si la petición salió.
-      await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          driverName: `${answers.firstName} ${answers.lastName}`.trim(),
-          truckOrCompanyName: answers.truckOrCompanyName,
-          trailerPlates: answers.trailerPlates,
-          driversLicense: answers.driversLicense,
-          phoneNumber: answers.phoneNumber,
-          loadingType: answers.loadingType,
-          unitNumber: answers.unitNumber,
-          produceTypes: serializeMultiSelect(answers.produceTypes),
-          produceTypeOther: answers.produceTypeOther,
-          loadAccommodation: serializeMultiSelect(answers.loadAccommodation),
-          spNumberOrder2: answers.spNumberOrder2,
-        }),
-      });
+    const ok = await submitWithRetry(APPS_SCRIPT_URL, {
+      driverName: `${answers.firstName} ${answers.lastName}`.trim(),
+      truckOrCompanyName: answers.truckOrCompanyName,
+      trailerPlates: answers.trailerPlates,
+      driversLicense: answers.driversLicense,
+      phoneNumber: answers.phoneNumber,
+      loadingType: answers.loadingType,
+      unitNumber: answers.unitNumber,
+      produceTypes: serializeMultiSelect(answers.produceTypes),
+      produceTypeOther: answers.produceTypeOther,
+      loadAccommodation: serializeMultiSelect(answers.loadAccommodation),
+      spNumberOrder2: answers.spNumberOrder2,
+    });
+    setPending(false);
+    if (ok) {
       setPhase("success");
-    } catch {
+    } else {
       setSubmitFailed(true);
-    } finally {
-      setPending(false);
     }
   }
 
   function handleNext() {
-    const validationError = currentStep.validate(answers);
+    const validationError = currentStep.validate(answers, locale);
     if (validationError) {
       setError(validationError);
       return;
@@ -104,62 +184,60 @@ export function CheckInForm() {
     setCurrentIndex((i) => Math.max(0, i - 1));
   }
 
-  function reset() {
-    setAnswers(emptyAnswers);
-    setCurrentIndex(0);
-    setError(undefined);
-    setSubmitFailed(false);
-    setPhase("welcome");
-  }
-
-  if (phase === "welcome") {
-    return <WelcomeScreen onStart={() => setPhase("question")} />;
-  }
-
-  if (phase === "success") {
-    return (
-      <>
-        <CornerLogo />
-        <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-          <div className="flex flex-col items-center gap-4 px-8 py-16 text-center">
-            <h2 className="text-2xl font-semibold text-neutral-900">
-              Check-in registrado
-            </h2>
-            <p className="text-neutral-600">
-              Espera indicaciones del personal de la bodega.
-            </p>
-            <Button onClick={reset} variant="secondary">
-              Registrar otro check-in
-            </Button>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   return (
-    <div>
-      <CornerLogo />
-      {submitFailed && (
-        <div className="mx-auto mb-4 w-full max-w-2xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-red-800">
-          {APPS_SCRIPT_URL
-            ? "No se pudo enviar. Revisa tu conexión e intenta de nuevo."
-            : "El formulario todavía no está conectado (falta configurar la URL del Apps Script)."}
+    <>
+      <LanguageToggle locale={locale} onChange={setLocale} />
+
+      {phase === "welcome" && (
+        <WelcomeScreen locale={locale} onStart={() => setPhase("question")} />
+      )}
+
+      {phase === "success" && (
+        <>
+          <CornerLogo />
+          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 px-8 py-16 text-center">
+              <h2 className="text-2xl font-semibold text-neutral-900 sm:text-3xl">
+                {ui.successTitle[locale]}
+              </h2>
+              <p className="text-neutral-600">{ui.successSubtitle[locale]}</p>
+              <p className="text-sm text-neutral-400">
+                {ui.successAutoReturn[locale]}
+              </p>
+              <Button onClick={reset} variant="secondary">
+                {ui.registerAnother[locale]}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {phase === "question" && (
+        <div>
+          <CornerLogo />
+          {submitFailed && (
+            <div className="mx-auto mb-4 w-full max-w-3xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-red-800">
+              {APPS_SCRIPT_URL
+                ? ui.failedToSend[locale]
+                : ui.notConnected[locale]}
+            </div>
+          )}
+          <QuestionCard
+            key={currentStep.id}
+            step={currentStep}
+            answers={answers}
+            setAnswer={setAnswer}
+            error={error}
+            locale={locale}
+            canGoPrevious={currentIndex > 0}
+            isLastStep={currentIndex === steps.length - 1}
+            pending={pending}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+          />
+          <ProgressDots total={steps.length} currentIndex={currentIndex} />
         </div>
       )}
-      <QuestionCard
-        key={currentStep.id}
-        step={currentStep}
-        answers={answers}
-        setAnswer={setAnswer}
-        error={error}
-        canGoPrevious={currentIndex > 0}
-        isLastStep={currentIndex === steps.length - 1}
-        pending={pending}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-      />
-      <ProgressDots total={steps.length} currentIndex={currentIndex} />
-    </div>
+    </>
   );
 }
