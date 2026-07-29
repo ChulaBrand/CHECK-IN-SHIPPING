@@ -6,6 +6,8 @@ import {
 } from "@/lib/options";
 import { fieldSchemas } from "@/lib/validation";
 
+type ArrayAnswerKey = "loadAccommodation" | "produceTypes";
+
 export type Answers = {
   firstName: string;
   lastName: string;
@@ -17,7 +19,7 @@ export type Answers = {
   spNumberOrder2: string;
   loadAccommodation: string[];
   unitNumber: string;
-  produceType: string;
+  produceTypes: string[];
   produceTypeOther: string;
 };
 
@@ -32,7 +34,7 @@ export const emptyAnswers: Answers = {
   spNumberOrder2: "",
   loadAccommodation: [],
   unitNumber: "",
-  produceType: "",
+  produceTypes: [],
   produceTypeOther: "",
 };
 
@@ -45,8 +47,10 @@ export type StepConfig = {
   kind: FieldKind;
   options?: readonly string[];
   // Para "text" | "tel" | "radio" | "select": qué campo de Answers edita
-  // esta pantalla. "name-split" y "checkbox-group" se manejan aparte.
-  answerKey?: Exclude<keyof Answers, "loadAccommodation">;
+  // esta pantalla. "name-split" se maneja aparte.
+  answerKey?: Exclude<keyof Answers, ArrayAnswerKey>;
+  // Para "checkbox-group": a cuál de los campos de arreglo apunta.
+  checkboxKey?: ArrayAnswerKey;
   // Devuelve un mensaje de error, o undefined si la respuesta es válida.
   validate: (answers: Answers) => string | undefined;
 };
@@ -132,6 +136,7 @@ export const LOADING_BRANCH_STEPS: StepConfig[] = [
     title: "Load Accomodation / Acomodo de la Carga",
     kind: "checkbox-group",
     options: LOAD_ACCOMMODATION_OPTIONS,
+    checkboxKey: "loadAccommodation",
     validate: fieldError("loadAccommodation", fieldSchemas.loadAccommodation),
   },
 ];
@@ -146,12 +151,13 @@ export const UNLOADING_BRANCH_STEPS: StepConfig[] = [
     validate: fieldError("unitNumber", fieldSchemas.unitNumber),
   },
   {
-    id: "produceType",
+    id: "produceTypes",
     title: "Que viene a descargar",
-    kind: "select",
+    subtitle: "¿Qué viene a descargar?",
+    kind: "checkbox-group",
     options: PRODUCE_TYPES,
-    answerKey: "produceType",
-    validate: fieldError("produceType", fieldSchemas.produceType),
+    checkboxKey: "produceTypes",
+    validate: fieldError("produceTypes", fieldSchemas.produceTypes),
   },
 ];
 
@@ -171,7 +177,7 @@ export function getActiveSteps(answers: Answers): StepConfig[] {
   const steps = [...COMMON_STEPS];
   if (answers.loadingType === "Unloading / Descargar") {
     steps.push(...UNLOADING_BRANCH_STEPS);
-    if (answers.produceType === "Otro") {
+    if (answers.produceTypes.includes("Otro")) {
       steps.push(PRODUCE_OTHER_STEP);
     }
   } else {

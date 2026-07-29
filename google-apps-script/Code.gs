@@ -19,15 +19,14 @@
 
 const SHEET_NAME = "Check-Ins";
 
+// Solo los campos comunes a las dos ramas (Cargar / Descargar) -- los demás
+// campos son exclusivos de una rama u otra, así que exigirlos aquí rechazaría
+// siempre la mitad de los envíos.
 const REQUIRED_FIELDS = [
   "driverName",
   "truckOrCompanyName",
-  "trailerPlates",
-  "driversLicense",
   "phoneNumber",
   "loadingType",
-  "unitNumber",
-  "produceType",
 ];
 
 const HEADERS = [
@@ -71,7 +70,7 @@ function doPost(e) {
       data.phoneNumber,
       data.loadingType,
       data.unitNumber,
-      data.produceType,
+      data.produceTypes || "",
       data.produceTypeOther || "",
       data.loadAccommodation || "",
       data.spNumberOrder2 || "",

@@ -8,7 +8,7 @@ export function ProgressDots({
   currentIndex: number;
 }) {
   return (
-    <div className="mx-auto mt-6 flex w-full max-w-xl items-center px-8">
+    <div className="mx-auto mt-6 flex w-full max-w-2xl items-center px-8">
       {Array.from({ length: total }).map((_, i) => (
         <div key={i} className="flex flex-1 items-center last:flex-none">
           <span

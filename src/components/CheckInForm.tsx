@@ -71,7 +71,7 @@ export function CheckInForm() {
           phoneNumber: answers.phoneNumber,
           loadingType: answers.loadingType,
           unitNumber: answers.unitNumber,
-          produceType: answers.produceType,
+          produceTypes: serializeMultiSelect(answers.produceTypes),
           produceTypeOther: answers.produceTypeOther,
           loadAccommodation: serializeMultiSelect(answers.loadAccommodation),
           spNumberOrder2: answers.spNumberOrder2,
@@ -120,7 +120,7 @@ export function CheckInForm() {
     return (
       <>
         <CornerLogo />
-        <div className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
           <div className="flex flex-col items-center gap-4 px-8 py-16 text-center">
             <h2 className="text-2xl font-semibold text-neutral-900">
               Check-in registrado
@@ -141,7 +141,7 @@ export function CheckInForm() {
     <div>
       <CornerLogo />
       {submitFailed && (
-        <div className="mx-auto mb-4 w-full max-w-xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-red-800">
+        <div className="mx-auto mb-4 w-full max-w-2xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-red-800">
           {APPS_SCRIPT_URL
             ? "No se pudo enviar. Revisa tu conexión e intenta de nuevo."
             : "El formulario todavía no está conectado (falta configurar la URL del Apps Script)."}

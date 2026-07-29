@@ -2,7 +2,7 @@ import { assetPath } from "@/lib/asset";
 
 export function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
-    <div className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl shadow-2xl">
+    <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl shadow-2xl">
       <div className="flex flex-col items-center gap-3 bg-[#141b4d] px-8 py-14 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

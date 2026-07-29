@@ -29,6 +29,79 @@ describe("fieldSchemas", () => {
         .success
     ).toBe(true);
   });
+
+  it("requires at least one produceTypes option", () => {
+    expect(fieldSchemas.produceTypes.safeParse([]).success).toBe(false);
+    expect(fieldSchemas.produceTypes.safeParse(["Papaya"]).success).toBe(
+      true
+    );
+    expect(
+      fieldSchemas.produceTypes.safeParse(["Papaya", "Otro"]).success
+    ).toBe(true);
+  });
+
+  describe("phoneNumber", () => {
+    it("rejects fewer than 10 digits", () => {
+      expect(fieldSchemas.phoneNumber.safeParse("123456789").success).toBe(
+        false
+      );
+    });
+
+    it("rejects more than 10 digits", () => {
+      expect(fieldSchemas.phoneNumber.safeParse("12345678901").success).toBe(
+        false
+      );
+    });
+
+    it("accepts exactly 10 digits, formatted or not", () => {
+      expect(fieldSchemas.phoneNumber.safeParse("1234567890").success).toBe(
+        true
+      );
+      expect(
+        fieldSchemas.phoneNumber.safeParse("(123) 456-7890").success
+      ).toBe(true);
+    });
+  });
+
+  describe("spNumberOrder2", () => {
+    it("accepts a single 6-digit number", () => {
+      expect(fieldSchemas.spNumberOrder2.safeParse("123456").success).toBe(
+        true
+      );
+    });
+
+    it("accepts several 6-digit numbers separated by space, /, - or _", () => {
+      expect(
+        fieldSchemas.spNumberOrder2.safeParse("123456/234567").success
+      ).toBe(true);
+      expect(
+        fieldSchemas.spNumberOrder2.safeParse("123456 234567 345678")
+          .success
+      ).toBe(true);
+      expect(
+        fieldSchemas.spNumberOrder2.safeParse("123456-234567_345678")
+          .success
+      ).toBe(true);
+    });
+
+    it("rejects numbers that aren't exactly 6 digits", () => {
+      expect(fieldSchemas.spNumberOrder2.safeParse("12345").success).toBe(
+        false
+      );
+      expect(fieldSchemas.spNumberOrder2.safeParse("1234567").success).toBe(
+        false
+      );
+      expect(
+        fieldSchemas.spNumberOrder2.safeParse("123456/23456").success
+      ).toBe(false);
+    });
+
+    it("rejects letters", () => {
+      expect(fieldSchemas.spNumberOrder2.safeParse("ABCDEF").success).toBe(
+        false
+      );
+    });
+  });
 });
 
 describe("getActiveSteps branching", () => {
@@ -59,26 +132,26 @@ describe("getActiveSteps branching", () => {
     ]);
   });
 
-  it("follows the Unloading branch: unit number, produce type", () => {
+  it("follows the Unloading branch: unit number, produce types", () => {
     const ids = getActiveSteps({
       ...emptyAnswers,
       loadingType: "Unloading / Descargar",
     }).map((s) => s.id);
-    expect(ids.slice(4)).toEqual(["unitNumber", "produceType"]);
+    expect(ids.slice(4)).toEqual(["unitNumber", "produceTypes"]);
   });
 
-  it("inserts the produceTypeOther step only when produceType is Otro", () => {
+  it("inserts the produceTypeOther step only when Otro is checked", () => {
     const withoutOtro = getActiveSteps({
       ...emptyAnswers,
       loadingType: "Unloading / Descargar",
-      produceType: "Aguacates",
+      produceTypes: ["Aguacates"],
     }).map((s) => s.id);
     expect(withoutOtro).not.toContain("produceTypeOther");
 
     const withOtro = getActiveSteps({
       ...emptyAnswers,
       loadingType: "Unloading / Descargar",
-      produceType: "Otro",
+      produceTypes: ["Aguacates", "Otro"],
     }).map((s) => s.id);
     expect(withOtro).toContain("produceTypeOther");
   });

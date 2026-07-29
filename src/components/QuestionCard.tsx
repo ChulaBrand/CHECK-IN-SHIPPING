@@ -35,23 +35,26 @@ function Field({
         </div>
       );
 
-    case "checkbox-group":
+    case "checkbox-group": {
+      const key = step.checkboxKey;
+      const selected = key ? answers[key] : [];
       return (
         <div className="grid gap-2 sm:grid-cols-2">
           {step.options?.map((option) => {
-            const checked = answers.loadAccommodation.includes(option);
+            const checked = selected.includes(option);
             return (
               <label
                 key={option}
-                className="flex items-center gap-2 rounded-md border border-neutral-200 px-3 py-2.5 text-sm text-neutral-700"
+                className="flex items-center gap-2 rounded-md border border-neutral-200 px-3 py-3 text-base text-neutral-700"
               >
                 <Checkbox
                   checked={checked}
                   onChange={(e) => {
+                    if (!key) return;
                     const next = e.target.checked
-                      ? [...answers.loadAccommodation, option]
-                      : answers.loadAccommodation.filter((v) => v !== option);
-                    setAnswer("loadAccommodation", next);
+                      ? [...selected, option]
+                      : selected.filter((v) => v !== option);
+                    setAnswer(key, next);
                   }}
                 />
                 {option}
@@ -60,6 +63,7 @@ function Field({
           })}
         </div>
       );
+    }
 
     case "radio":
       return (
@@ -161,7 +165,7 @@ export function QuestionCard({
   onPrevious: () => void;
 }) {
   return (
-    <div className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
       <form
         onSubmit={(e) => {
           e.preventDefault();

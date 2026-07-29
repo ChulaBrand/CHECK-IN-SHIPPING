@@ -10,17 +10,24 @@ export const LOADING_TYPES = [
 ] as const;
 
 export const PRODUCE_TYPES = [
-  "Aguacates",
-  "Plátanos",
   "Papaya",
-  "Pepinos",
   "Limas",
-  "Otro", // Debe ir al final: al elegirlo aparece un campo de texto libre.
+  "Piñas",
+  "Tomates",
+  "Pepinos",
+  "Aguacates",
+  "Aloe Vera",
+  "Carton",
+  "Material de reempaque",
+  "Otro", // Debe ir al final: al marcarlo aparece un campo de texto libre.
 ] as const;
 
 export const LOAD_ACCOMMODATION_OPTIONS = [
-  "Sideways / Atravezadas",
-  "Straight / Derechas",
   "Single Double / Sencilla Doble",
   "Square / En Cuadro",
+  "Sideways / Atravezadas",
+  "Straight / Derechas",
+  "California Load / Carga California",
+  "Single Double Single Double/ Sencilla Doble Sencilla Doble",
+  "NA",
 ] as const;
