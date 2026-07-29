@@ -55,19 +55,35 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-## 3. Despliega el formulario (Netlify, gratis)
+## 3. Despliega el formulario (GitHub Pages, gratis, sin cuentas nuevas)
 
-1. Ve a [netlify.com](https://netlify.com) → crea cuenta con tu GitHub.
-2. **Add new site → Import an existing project** → selecciona este repo
-   (`ChulaBrand/CHECK-IN-SHIPPING`) y la rama `claude/shipping-checkin-page-bkisxw`.
-3. Netlify detecta Next.js solo. Antes de darle "Deploy", agrega la variable
-   de entorno (Site configuration → Environment variables):
-   - `NEXT_PUBLIC_APPS_SCRIPT_URL` = la URL que copiaste en el paso 1.6
-4. Deploy. Netlify te da un link `https://algo.netlify.app` -- ya lo puedes
-   abrir y compartir.
+Como el repo es público, GitHub Pages lo hospeda gratis, y como ya está todo
+armado (`.github/workflows/deploy-pages.yml`), solo te faltan 2 pasos en la
+configuración del repo -- nada que instalar ni ninguna cuenta nueva:
 
-Como es un sitio estático, también funciona igual en GitHub Pages, Vercel,
-Cloudflare Pages, etc. -- Netlify es solo la más simple de conectar.
+1. En GitHub, entra a tu repo → **Settings → Secrets and variables →
+   Actions → pestaña "Variables"** → **New repository variable**:
+   - Name: `NEXT_PUBLIC_APPS_SCRIPT_URL`
+   - Value: la URL que copiaste en el paso 1.6 (termina en `/exec`)
+2. **Settings → Pages → Build and deployment → Source**: cambia a
+   **"GitHub Actions"**.
+
+Con eso, cada vez que se suba código a la rama
+`claude/shipping-checkin-page-bkisxw` se publica solo. Para lanzar el primer
+despliegue ahora mismo (sin esperar a un push nuevo): pestaña **Actions** de
+tu repo → "Deploy to GitHub Pages" → **Run workflow**.
+
+Cuando termine (1-2 minutos, lo ves en la pestaña Actions), tu link va a ser:
+
+```
+https://chulabrand.github.io/CHECK-IN-SHIPPING/
+```
+
+**Alternativas:** como es un sitio 100% estático, también funciona igual en
+Netlify, Vercel o Cloudflare Pages si algún día prefieres alguna de esas --
+solo conecta el repo ahí y ponles la misma variable de entorno
+`NEXT_PUBLIC_APPS_SCRIPT_URL` (con esas sí hay que crear cuenta nueva, por
+eso no son la opción por defecto).
 
 ## Cómo modificar cosas tú mismo
 
