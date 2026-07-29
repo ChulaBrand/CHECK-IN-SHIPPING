@@ -18,29 +18,9 @@ const optionalText = () =>
     .optional()
     .transform((value) => (value ? value : undefined));
 
-const optionalInt = (label: string) =>
-  z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value ? Number(value) : undefined))
-    .pipe(
-      z
-        .number()
-        .int()
-        .nonnegative({ error: `${label} debe ser 0 o mayor.` })
-        .optional()
-    );
-
-const optionalDateTimeLocal = () =>
-  z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value ? new Date(value) : undefined))
-    .pipe(z.date().optional());
-
-// Campos que llena el chofer al hacer check-in (formulario público).
+// Campos que llena el chofer al hacer check-in (formulario público). Es el
+// único formulario de la app -- el personal de la bodega completa el resto
+// directo en la hoja de Google Sheets.
 export const checkInCreateSchema = z
   .object({
     driverName: requiredText("Nombre y apellido"),
@@ -66,30 +46,3 @@ export const checkInCreateSchema = z
   });
 
 export type CheckInCreateInput = z.infer<typeof checkInCreateSchema>;
-
-// Edición completa de un registro (pantalla de personal, botón "Guardar").
-export const checkInUpdateSchema = z
-  .object({
-    driverName: requiredText("Nombre y apellido"),
-    truckOrCompanyName: requiredText("Camión / Empresa"),
-    trailerPlates: requiredText("Placas del remolque"),
-    driversLicense: requiredText("Licencia de conducir"),
-    phoneNumber: requiredText("Teléfono"),
-    loadingType: z.enum(LOADING_TYPES),
-    unitNumber: requiredText("# Económico o # de Caja"),
-    produceType: z.enum(PRODUCE_TYPES),
-    produceTypeOther: optionalText(),
-    loadAccommodation: z.array(z.enum(LOAD_ACCOMMODATION_OPTIONS)).default([]),
-    spNumberOrder: optionalText(),
-    spNumberOrder2: optionalText(),
-    entryTime: optionalDateTimeLocal(),
-    forkliftAssigned: optionalText(),
-    dockAssigned: optionalText(),
-    palletCount: optionalInt("# de tarimas"),
-  })
-  .refine((data) => data.produceType !== "Otro" || !!data.produceTypeOther, {
-    error: "Especifica qué producto es.",
-    path: ["produceTypeOther"],
-  });
-
-export type CheckInUpdateInput = z.infer<typeof checkInUpdateSchema>;

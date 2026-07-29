@@ -1,73 +1,95 @@
 # Check-In Shipping
 
-Aplicación propia de check-in de camiones (carga/descarga) para reemplazar el
-formulario de JotForm del mismo nombre. Mismo flujo de trabajo, pero con base
-de datos propia y totalmente editable por ustedes.
+Formulario propio de check-in de camiones (carga/descarga) para reemplazar
+el formulario de JotForm del mismo nombre, sin sus restricciones de edición.
 
 Flujo de trabajo:
 
 1. **El chofer** llena el formulario público (`/`) al llegar: datos suyos y
    del camión, si viene a cargar o descargar, qué producto trae, acomodo de
-   la carga y # de orden.
-2. **El personal** entra a `/staff`, ve todos los check-ins, y completa cada
-   registro (hora de entrada, forklift, dock, # de tarimas) hasta cerrarlo
-   con "Completar Check-In".
+   la carga y # de orden. Al enviarlo, se guarda como una fila nueva en tu
+   Google Sheet.
+2. **El personal** abre esa misma hoja de Google Sheets y completa el resto
+   a mano: hora de entrada, forklift, dock, # de tarimas, hora de salida.
+
+No hay servidor ni base de datos propia -- es una página estática (se puede
+hospedar gratis en cualquier lado) que le escribe directo a tu Sheet
+mediante un Google Apps Script.
 
 ## Stack
 
-- [Next.js](https://nextjs.org) (App Router) + TypeScript
-- [Prisma ORM](https://www.prisma.io) + SQLite (archivo propio, sin depender
-  de ningún servicio externo)
+- [Next.js](https://nextjs.org) (App Router, exportado como sitio estático)
+  + TypeScript
 - Tailwind CSS (componentes propios en `src/components/ui/`, sin librería de
   terceros)
-- [iron-session](https://github.com/vvo/iron-session) para la sesión del
-  personal (contraseña compartida, no hay cuentas individuales)
-- [Zod](https://zod.dev) para validar los formularios en el servidor
+- [Zod](https://zod.dev) para validar el formulario en el navegador
+- [Google Apps Script](https://developers.google.com/apps-script) como
+  puente hacia Google Sheets (código en `google-apps-script/Code.gs`)
 
-## Requisitos
+## 1. Configura tu Google Sheet (una sola vez)
 
-- Node.js 22+
+1. Crea una hoja de cálculo nueva en Google Sheets. Nombra la primera
+   pestaña **exactamente** `Check-Ins`.
+2. Menú **Extensiones → Apps Script**.
+3. Borra lo que haya en `Code.gs` y pega el contenido completo de
+   [`google-apps-script/Code.gs`](./google-apps-script/Code.gs) de este repo.
+4. En el editor, en el menú desplegable de funciones (arriba), elige
+   **setupHeaders** y presiona ▶ **Ejecutar** una vez. La primera vez te va
+   a pedir autorizar permisos (es tu propio script sobre tu propia hoja, es
+   seguro aceptar). Esto crea la fila de encabezados correcta.
+5. **Implementar → Nueva implementación**:
+   - Tipo: **Aplicación web**
+   - Ejecutar como: **Yo**
+   - Quién tiene acceso: **Cualquier usuario**
+6. Copia la URL que termina en `/exec` -- la vas a necesitar en el paso 3.
 
-## Poner a correr el proyecto en tu máquina
+## 2. Corre el proyecto en tu máquina (opcional, para probar)
+
+Requiere Node.js 22+.
 
 ```bash
 npm install
-cp .env.example .env      # y edita STAFF_PASSWORD / SESSION_SECRET
-npx prisma migrate dev    # crea prisma/dev.db con las tablas
-npx prisma db seed        # (opcional) llena unos registros de ejemplo
+cp .env.example .env.local   # pega tu URL de Apps Script del paso 1.6
 npm run dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000) para el formulario, y
-[http://localhost:3000/staff/login](http://localhost:3000/staff/login) para
-el panel de personal (contraseña: la que pusiste en `STAFF_PASSWORD`).
+Abre [http://localhost:3000](http://localhost:3000).
+
+## 3. Despliega el formulario (Netlify, gratis)
+
+1. Ve a [netlify.com](https://netlify.com) → crea cuenta con tu GitHub.
+2. **Add new site → Import an existing project** → selecciona este repo
+   (`ChulaBrand/CHECK-IN-SHIPPING`) y la rama `claude/shipping-checkin-page-bkisxw`.
+3. Netlify detecta Next.js solo. Antes de darle "Deploy", agrega la variable
+   de entorno (Site configuration → Environment variables):
+   - `NEXT_PUBLIC_APPS_SCRIPT_URL` = la URL que copiaste en el paso 1.6
+4. Deploy. Netlify te da un link `https://algo.netlify.app` -- ya lo puedes
+   abrir y compartir.
+
+Como es un sitio estático, también funciona igual en GitHub Pages, Vercel,
+Cloudflare Pages, etc. -- Netlify es solo la más simple de conectar.
 
 ## Cómo modificar cosas tú mismo
 
-Este proyecto se hizo pensando en que ustedes (o Claude Code en otra sesión)
-puedan seguir editándolo, sin las restricciones de JotForm.
-
 **Agregar o cambiar opciones de una lista desplegable** (tipo de producto,
 acomodo de carga, etc.): edita `src/lib/options.ts`. Es el único lugar donde
-viven esas listas -- se reflejan solas en el formulario público, en la
-pantalla del personal, y en las validaciones. Reinicia el servidor después de
-editar.
+viven esas listas -- se reflejan solas en el formulario y en las
+validaciones.
 
-**Agregar un campo nuevo al formulario:**
-1. Agrega la columna en `prisma/schema.prisma`.
-2. Corre `npx prisma migrate dev --name agrega_mi_campo`.
-3. Agrégalo al esquema correspondiente en `src/lib/validation.ts`.
-4. Agrega el `<input>` en `src/components/CheckInForm.tsx` (formulario del
-   chofer) y/o `src/components/RecordEditForm.tsx` (pantalla del personal).
+**Agregar un campo nuevo al formulario** -- toca editar en dos lados, porque
+son dos proyectos separados (el formulario y el Apps Script):
+1. `src/lib/validation.ts`: agrega el campo al esquema de Zod.
+2. `src/components/CheckInForm.tsx`: agrega el `<input>`.
+3. `google-apps-script/Code.gs`: agrega el nombre del campo a `HEADERS` y a
+   la lista que arma `appendRow(...)`, y si es obligatorio, a
+   `REQUIRED_FIELDS`.
+4. Vuelve a pegar el `Code.gs` actualizado en el editor de Apps Script
+   (Extensiones → Apps Script en tu Sheet) y crea una **nueva
+   implementación** (Implementar → Nueva implementación) para que los
+   cambios apliquen -- la URL `/exec` se mantiene igual.
 
-**Ver o editar los datos directamente** (como una hoja de cálculo):
-
-```bash
-npx prisma studio
-```
-
-**Cambiar la contraseña del personal:** edita `STAFF_PASSWORD` en tu `.env`
-(o en las variables de entorno de donde esté desplegado) y reinicia.
+**Cambiar textos/estilos:** todo el formulario visual está en
+`src/components/CheckInForm.tsx` y `src/components/ui/`.
 
 ## Pruebas
 
@@ -75,48 +97,24 @@ npx prisma studio
 npm run test
 ```
 
-Son pruebas ligeras (`vitest`) sobre las validaciones y utilidades en
-`src/lib/`. La app en sí se verificó manualmente de punta a punta (llenar
-check-in → login de personal → buscar → completar registro → cerrar sesión)
-antes de entregarse.
+Pruebas ligeras (`vitest`) sobre la validación del formulario en
+`src/lib/`.
 
-## Base de datos: SQLite y sus límites
+## Una limitación a tener en cuenta
 
-Los datos viven en un solo archivo SQLite que ustedes controlan. Esto
-funciona muy bien en Railway, Render, Fly.io o un VPS/Docker con un volumen
-persistente -- **pero no persiste en plataformas serverless efímeras como las
-funciones por defecto de Vercel** (cada despliegue borra el archivo). Si más
-adelante quieren usar Vercel o crecen más allá de SQLite, migrar a Postgres es
-un cambio pequeño: cambiar `provider = "postgresql"` en
-`prisma/schema.prisma`, apuntar `DATABASE_URL` a un Postgres (Neon, Supabase,
-Railway Postgres, etc.), y correr `npx prisma migrate deploy`.
+Por cómo funciona Google Apps Script con peticiones desde el navegador (CORS),
+el formulario no puede leer la respuesta del script -- solo sabe si la
+petición salió de tu navegador, no si Apps Script realmente terminó de
+guardar la fila. En la práctica casi siempre funciona (así lo usan miles de
+formularios hechos con este mismo patrón), pero si algún día notas envíos
+que no llegan a la hoja, revisa el registro de ejecuciones en el editor de
+Apps Script (ícono de reloj, "Execuciones") para ver el error real.
 
-**Respaldo:** el archivo de base de datos es un solo archivo -- cópialo
-(`dev.db` en local, o el volumen `checkin_data` en Docker) para respaldarlo.
+## Si en algún momento quieres base de datos propia (MySQL, Postgres, etc.)
 
-## Despliegue con Docker
-
-El repo incluye un `Dockerfile` y `docker-compose.yml` listos para usar en
-Railway, Render, Fly.io o un VPS con Docker.
-
-```bash
-cp .env.example .env      # y edita STAFF_PASSWORD / SESSION_SECRET
-docker compose up --build
-```
-
-Esto levanta la app en `http://localhost:3000`, aplica las migraciones
-pendientes automáticamente al arrancar, y guarda `prod.db` en un volumen
-Docker (`checkin_data`) que sobrevive a reinicios y redeploys.
-
-> **Nota:** el Dockerfile no se pudo probar con un build real dentro de la
-> sesión donde se construyó esta app (el entorno no tenía el daemon de Docker
-> disponible), aunque sí se verificó con éxito el build y arranque de
-> producción de Next.js (`npm run build && npm start`) que es la parte que
-> corre dentro del contenedor. Antes de confiar en él para producción, corre
-> tú mismo `docker compose up --build` una vez y confirma que todo funciona.
-
-Para Railway o Render específicamente: conecta este repo, deja que detecten
-el `Dockerfile`, agrega un volumen persistente montado en `/app/data`, y
-configura las variables de entorno `STAFF_PASSWORD` y `SESSION_SECRET` (no
-necesitas poner `DATABASE_URL`, el `docker-compose.yml`/Dockerfile ya la
-apunta al volumen).
+Antes de esta versión existió una con base de datos propia (Prisma +
+SQLite), panel de personal con login, y un `Dockerfile` para desplegar en
+Railway/Render -- queda en el historial de git de este repo por si algún día
+quieres retomar ese camino (por ejemplo, cuando migres tus datos a MySQL).
+Pídele a Claude Code que la recupere y la conecte a MySQL cuando llegue ese
+momento.

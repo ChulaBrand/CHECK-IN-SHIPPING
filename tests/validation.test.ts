@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkInCreateSchema, checkInUpdateSchema } from "@/lib/validation";
+import { checkInCreateSchema } from "@/lib/validation";
 
 const validCreatePayload = {
   driverName: "Juan Pérez",
@@ -73,48 +73,5 @@ describe("checkInCreateSchema", () => {
       produceTypeOther: "Mangos",
     });
     expect(result.success).toBe(true);
-  });
-});
-
-describe("checkInUpdateSchema", () => {
-  it("allows staff fields (entryTime, forklift, dock, pallets) to be empty", () => {
-    const result = checkInUpdateSchema.safeParse({
-      ...validCreatePayload,
-      entryTime: "",
-      forkliftAssigned: "",
-      dockAssigned: "",
-      palletCount: "",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.entryTime).toBeUndefined();
-      expect(result.data.palletCount).toBeUndefined();
-    }
-  });
-
-  it("parses a filled-in palletCount as a number", () => {
-    const result = checkInUpdateSchema.safeParse({
-      ...validCreatePayload,
-      entryTime: "2026-07-29T10:00",
-      forkliftAssigned: "Forklift 1",
-      dockAssigned: "Dock 1",
-      palletCount: "24",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.palletCount).toBe(24);
-      expect(result.data.entryTime).toBeInstanceOf(Date);
-    }
-  });
-
-  it("rejects a non-numeric palletCount", () => {
-    const result = checkInUpdateSchema.safeParse({
-      ...validCreatePayload,
-      entryTime: "",
-      forkliftAssigned: "",
-      dockAssigned: "",
-      palletCount: "not-a-number",
-    });
-    expect(result.success).toBe(false);
   });
 });
