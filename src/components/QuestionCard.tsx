@@ -1,13 +1,66 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import type { StepConfig, Answers } from "@/lib/wizardSteps";
 import { ui, type Locale } from "@/lib/i18n";
+import {
+  formatPhoneMask,
+  extractPhoneDigits,
+  phoneMaskCursorPosition,
+} from "@/lib/phone";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 type SetAnswer = <K extends keyof Answers>(key: K, value: Answers[K]) => void;
+
+// El campo solo soporta escribir/borrar al final de los dígitos ya escritos
+// (como un PIN) -- después de cada cambio regresamos el cursor justo después
+// del último dígito real, si no Backspace a veces borra un "_" en vez de un
+// dígito, o el siguiente dígito se inserta en medio de la máscara.
+function PhoneInput({
+  digits,
+  onChange,
+}: {
+  digits: string;
+  onChange: (digits: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const masked = formatPhoneMask(digits);
+  const cursorPos = phoneMaskCursorPosition(digits.length);
+
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (el && document.activeElement === el) {
+      el.setSelectionRange(cursorPos, cursorPos);
+    }
+  }, [digits, cursorPos]);
+
+  // El navegador coloca su propio cursor al enfocar/hacer click (ej. al
+  // volver de un error de validación, o al tocar el campo en medio de la
+  // máscara) DESPUÉS de que corran estos manejadores, así que forzarlo aquí
+  // mismo no gana esa carrera -- se difiere un tick para corregirlo después.
+  const snapCursorNextTick = () => {
+    setTimeout(() => {
+      const el = inputRef.current;
+      if (el) el.setSelectionRange(cursorPos, cursorPos);
+    }, 0);
+  };
+
+  return (
+    <Input
+      ref={inputRef}
+      type="tel"
+      inputMode="numeric"
+      value={masked}
+      onChange={(e) => onChange(extractPhoneDigits(e.target.value))}
+      onFocus={snapCursorNextTick}
+      onClick={snapCursorNextTick}
+      autoFocus
+    />
+  );
+}
 
 function Field({
   step,
@@ -131,11 +184,18 @@ function Field({
       );
 
     case "tel":
+      return (
+        <PhoneInput
+          digits={step.answerKey ? answers[step.answerKey] : ""}
+          onChange={(digits) => step.answerKey && setAnswer(step.answerKey, digits)}
+        />
+      );
+
     case "text":
     default:
       return (
         <Input
-          type={step.kind === "tel" ? "tel" : "text"}
+          type="text"
           value={step.answerKey ? answers[step.answerKey] : ""}
           onChange={(e) =>
             step.answerKey && setAnswer(step.answerKey, e.target.value)

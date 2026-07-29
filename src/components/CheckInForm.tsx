@@ -7,6 +7,7 @@ import { ProgressDots } from "@/components/ProgressDots";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { emptyAnswers, getActiveSteps, type Answers } from "@/lib/wizardSteps";
 import { serializeMultiSelect } from "@/lib/utils";
+import { formatPhoneMask } from "@/lib/phone";
 import { assetPath } from "@/lib/asset";
 import { ui, type Locale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -149,7 +150,7 @@ export function CheckInForm() {
       truckOrCompanyName: answers.truckOrCompanyName,
       trailerPlates: answers.trailerPlates,
       driversLicense: answers.driversLicense,
-      phoneNumber: answers.phoneNumber,
+      phoneNumber: formatPhoneMask(answers.phoneNumber),
       loadingType: answers.loadingType,
       unitNumber: answers.unitNumber,
       produceTypes: serializeMultiSelect(answers.produceTypes),
