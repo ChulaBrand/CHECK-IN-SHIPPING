@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Un registro por camión que hace check-in. Los campos de "chofer" se llenan
+// al entrar; los campos de "personal" se completan después para cerrar el
+// registro (status pasa de OPEN a CHECKED_OUT).
+//
+// Todos los campos respaldados por listas desplegables se guardan como String
+// simple (no enum) y se validan contra src/lib/options.ts en la capa de
+// aplicación -- así, agregar una opción nueva nunca requiere una migración.
+model CheckIn {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  status    String   @default("OPEN")
+
+  // ---- Llenado por el chofer al entrar ----
+  date               DateTime @default(now())
+  driverName         String
+  truckOrCompanyName String
+  trailerPlates      String
+  driversLicense     String
+  phoneNumber        String
+  loadingType        String
+  unitNumber         String
+  produceType        String
+  produceTypeOther   String?
+  loadAccommodation  String?
+  spNumberOrder      String?
+  spNumberOrder2     String?
+
+  // ---- Completado después por el personal de la bodega ----
+  entryTime        DateTime?
+  forkliftAssigned String?
+  dockAssigned     String?
+  palletCount      Int?
+  checkOutTime     DateTime?
+
+  @@index([status])
+  @@index([createdAt])
+}

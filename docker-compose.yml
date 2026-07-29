@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Ruta dentro del volumen montado -- pisa cualquier DATABASE_URL que
+      # traiga .env (ese es para correr con `npm run dev` en tu máquina).
+      DATABASE_URL: "file:/app/data/prod.db"
+    env_file:
+      - .env
+    volumes:
+      - checkin_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  checkin_data:
