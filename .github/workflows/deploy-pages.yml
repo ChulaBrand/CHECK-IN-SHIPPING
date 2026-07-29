@@ -27,6 +27,7 @@ jobs:
       - run: npm run build
         env:
           GITHUB_PAGES: "true"
+          NEXT_PUBLIC_BASE_PATH: /CHECK-IN-SHIPPING
           # Configúrala en: Settings → Secrets and variables → Actions →
           # pestaña Variables → New repository variable.
           NEXT_PUBLIC_APPS_SCRIPT_URL: ${{ vars.NEXT_PUBLIC_APPS_SCRIPT_URL }}

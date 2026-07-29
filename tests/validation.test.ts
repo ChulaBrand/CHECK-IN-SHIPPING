@@ -1,77 +1,85 @@
 import { describe, expect, it } from "vitest";
-import { checkInCreateSchema } from "@/lib/validation";
+import { fieldSchemas } from "@/lib/validation";
+import { emptyAnswers, getActiveSteps } from "@/lib/wizardSteps";
 
-const validCreatePayload = {
-  driverName: "Juan Pérez",
-  truckOrCompanyName: "Transportes Rustam",
-  trailerPlates: "4SJ8919",
-  driversLicense: "MX-8827311",
-  phoneNumber: "656 123 4567",
-  loadingType: "Loading / Cargar",
-  unitNumber: "27",
-  produceType: "Aguacates",
-  produceTypeOther: "",
-  loadAccommodation: ["Straight / Derechas"],
-  spNumberOrder: "",
-  spNumberOrder2: "",
-};
-
-describe("checkInCreateSchema", () => {
-  it("accepts a fully valid check-in payload", () => {
-    const result = checkInCreateSchema.safeParse(validCreatePayload);
-    expect(result.success).toBe(true);
+describe("fieldSchemas", () => {
+  it("rejects empty required text fields", () => {
+    expect(fieldSchemas.firstName.safeParse("").success).toBe(false);
+    expect(fieldSchemas.phoneNumber.safeParse("   ").success).toBe(false);
   });
 
-  it("rejects an empty payload with missing required fields", () => {
-    const result = checkInCreateSchema.safeParse({
-      driverName: "",
-      truckOrCompanyName: "",
-      trailerPlates: "",
-      driversLicense: "",
-      phoneNumber: "",
-      loadingType: "",
-      unitNumber: "",
-      produceType: "",
-      produceTypeOther: "",
-      loadAccommodation: [],
-      spNumberOrder: "",
-      spNumberOrder2: "",
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      expect(fieldErrors.driverName?.length).toBeGreaterThan(0);
-      expect(fieldErrors.loadingType?.length).toBeGreaterThan(0);
-      expect(fieldErrors.produceType?.length).toBeGreaterThan(0);
-    }
+  it("accepts filled-in required text fields", () => {
+    expect(fieldSchemas.firstName.safeParse("Juan").success).toBe(true);
   });
 
   it("rejects a loadingType value outside the allowed options", () => {
-    const result = checkInCreateSchema.safeParse({
-      ...validCreatePayload,
-      loadingType: "Sideways",
-    });
-    expect(result.success).toBe(false);
+    expect(fieldSchemas.loadingType.safeParse("Sideways").success).toBe(false);
   });
 
-  it("requires produceTypeOther when produceType is Otro", () => {
-    const result = checkInCreateSchema.safeParse({
-      ...validCreatePayload,
-      produceType: "Otro",
-      produceTypeOther: "",
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.flatten().fieldErrors.produceTypeOther?.length).toBeGreaterThan(0);
-    }
+  it("accepts a valid loadingType option", () => {
+    expect(
+      fieldSchemas.loadingType.safeParse("Loading / Cargar").success
+    ).toBe(true);
   });
 
-  it("accepts Otro when produceTypeOther is filled in", () => {
-    const result = checkInCreateSchema.safeParse({
-      ...validCreatePayload,
+  it("requires at least one loadAccommodation option", () => {
+    expect(fieldSchemas.loadAccommodation.safeParse([]).success).toBe(false);
+    expect(
+      fieldSchemas.loadAccommodation.safeParse(["Straight / Derechas"])
+        .success
+    ).toBe(true);
+  });
+});
+
+describe("getActiveSteps branching", () => {
+  it("defaults to the Loading branch before loadingType is answered", () => {
+    const ids = getActiveSteps(emptyAnswers).map((s) => s.id);
+    expect(ids).toEqual([
+      "name",
+      "phone",
+      "truck",
+      "loadingType",
+      "trailerPlates",
+      "driversLicense",
+      "spNumberOrder2",
+      "loadAccommodation",
+    ]);
+  });
+
+  it("follows the Loading branch: plates, license, order #, accommodation", () => {
+    const ids = getActiveSteps({
+      ...emptyAnswers,
+      loadingType: "Loading / Cargar",
+    }).map((s) => s.id);
+    expect(ids.slice(4)).toEqual([
+      "trailerPlates",
+      "driversLicense",
+      "spNumberOrder2",
+      "loadAccommodation",
+    ]);
+  });
+
+  it("follows the Unloading branch: unit number, produce type", () => {
+    const ids = getActiveSteps({
+      ...emptyAnswers,
+      loadingType: "Unloading / Descargar",
+    }).map((s) => s.id);
+    expect(ids.slice(4)).toEqual(["unitNumber", "produceType"]);
+  });
+
+  it("inserts the produceTypeOther step only when produceType is Otro", () => {
+    const withoutOtro = getActiveSteps({
+      ...emptyAnswers,
+      loadingType: "Unloading / Descargar",
+      produceType: "Aguacates",
+    }).map((s) => s.id);
+    expect(withoutOtro).not.toContain("produceTypeOther");
+
+    const withOtro = getActiveSteps({
+      ...emptyAnswers,
+      loadingType: "Unloading / Descargar",
       produceType: "Otro",
-      produceTypeOther: "Mangos",
-    });
-    expect(result.success).toBe(true);
+    }).map((s) => s.id);
+    expect(withOtro).toContain("produceTypeOther");
   });
 });

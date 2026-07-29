@@ -16,6 +16,17 @@ No hay servidor ni base de datos propia -- es una página estática (se puede
 hospedar gratis en cualquier lado) que le escribe directo a tu Sheet
 mediante un Google Apps Script.
 
+El formulario replica el estilo "una pregunta por pantalla" del Jotform
+original (tarjeta blanca, barra rosa Anterior/Siguiente, logo de Chula
+Brand), incluyendo sus dos ramas: si eliges **Loading / Cargar** pregunta
+placas, licencia, # de orden y acomodo de carga; si eliges **Unloading /
+Descargar** pregunta # económico y qué producto trae. La secuencia completa
+de pantallas vive en `src/lib/wizardSteps.ts`.
+
+**Falta el logo:** sube tu logo a `public/chula-brand-logo.png` (Add file →
+Upload files en GitHub, dentro de la carpeta `public`) -- el formulario ya
+apunta a esa ruta, solo falta que el archivo exista.
+
 ## Stack
 
 - [Next.js](https://nextjs.org) (App Router, exportado como sitio estático)
@@ -37,6 +48,10 @@ mediante un Google Apps Script.
    **setupHeaders** y presiona ▶ **Ejecutar** una vez. La primera vez te va
    a pedir autorizar permisos (es tu propio script sobre tu propia hoja, es
    seguro aceptar). Esto crea la fila de encabezados correcta.
+   > Si ya habías pegado una versión anterior de `Code.gs` y corrido
+   > `setupHeaders` antes, vuelve a correrla después de pegar la versión
+   > nueva -- las columnas cambiaron (se quitó "SP # / Order" sin el `#`,
+   > que nunca se llenaba) y necesitas que los encabezados coincidan.
 5. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**
@@ -92,20 +107,26 @@ acomodo de carga, etc.): edita `src/lib/options.ts`. Es el único lugar donde
 viven esas listas -- se reflejan solas en el formulario y en las
 validaciones.
 
-**Agregar un campo nuevo al formulario** -- toca editar en dos lados, porque
-son dos proyectos separados (el formulario y el Apps Script):
-1. `src/lib/validation.ts`: agrega el campo al esquema de Zod.
-2. `src/components/CheckInForm.tsx`: agrega el `<input>`.
+**Agregar, quitar o reordenar una pantalla del formulario:** todo el flujo
+(qué pregunta va en qué pantalla, en qué orden, y las dos ramas de Cargar/
+Descargar) vive en un solo lugar: `src/lib/wizardSteps.ts`. Cada pantalla es
+un objeto en `COMMON_STEPS`, `LOADING_BRANCH_STEPS` o `UNLOADING_BRANCH_STEPS`
+-- copiar uno existente y ajustarlo es la forma más fácil de agregar uno
+nuevo. Después:
+1. `src/lib/validation.ts`: agrega el validador del campo a `fieldSchemas`.
+2. `src/lib/wizardSteps.ts`: agrega el nuevo `StepConfig` (con su
+   `answerKey`) en la rama que corresponda.
 3. `google-apps-script/Code.gs`: agrega el nombre del campo a `HEADERS` y a
    la lista que arma `appendRow(...)`, y si es obligatorio, a
    `REQUIRED_FIELDS`.
 4. Vuelve a pegar el `Code.gs` actualizado en el editor de Apps Script
-   (Extensiones → Apps Script en tu Sheet) y crea una **nueva
-   implementación** (Implementar → Nueva implementación) para que los
-   cambios apliquen -- la URL `/exec` se mantiene igual.
+   (Extensiones → Apps Script en tu Sheet), corre `setupHeaders` de nuevo, y
+   crea una **nueva implementación** (Implementar → Nueva implementación)
+   para que los cambios apliquen -- la URL `/exec` se mantiene igual.
 
-**Cambiar textos/estilos:** todo el formulario visual está en
-`src/components/CheckInForm.tsx` y `src/components/ui/`.
+**Cambiar textos/estilos:** los colores (rosa, azul marino) y el layout de
+cada tipo de pregunta están en `src/components/QuestionCard.tsx`,
+`src/components/WelcomeScreen.tsx` y `src/components/ui/`.
 
 ## Pruebas
 

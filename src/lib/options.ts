@@ -24,19 +24,3 @@ export const LOAD_ACCOMMODATION_OPTIONS = [
   "Single Double / Sencilla Doble",
   "Square / En Cuadro",
 ] as const;
-
-// Dock y forklift todavía no tienen una lista fija conocida, así que hoy son
-// campos de texto libre (ver CheckInForm/RecordEditForm). Para convertirlos
-// en lista desplegable más adelante: descomenta un arreglo como los de
-// arriba, impórtalo en RecordEditForm.tsx, y cambia el <input> por un
-// <Select>.
-// export const DOCKS = ["Dock 1", "Dock 2"] as const;
-// export const FORKLIFTS = ["Forklift A", "Forklift B"] as const;
-
-export const CHECKIN_STATUS = {
-  OPEN: "OPEN",
-  CHECKED_OUT: "CHECKED_OUT",
-} as const;
-
-export type CheckInStatus =
-  (typeof CHECKIN_STATUS)[keyof typeof CHECKIN_STATUS];

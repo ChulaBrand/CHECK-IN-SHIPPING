@@ -42,7 +42,6 @@ const HEADERS = [
   "Qué viene a Descargar",
   "Producto (si es Otro)",
   "Acomodo de la Carga",
-  "SP # / Order",
   "SP # / Order #",
   "Hora de Entrada",
   "Forklift Asignado",
@@ -75,7 +74,6 @@ function doPost(e) {
       data.produceType,
       data.produceTypeOther || "",
       data.loadAccommodation || "",
-      data.spNumberOrder || "",
       data.spNumberOrder2 || "",
       "", // Hora de Entrada -- la llena el personal
       "", // Forklift Asignado -- la llena el personal
