@@ -57,30 +57,53 @@ etc.) y no se toca ni se mezcla con este.
 3. Borra lo que haya en `Code.gs` y pega el contenido completo de
    [`google-apps-script/RecibirCheckInWeb.gs`](./google-apps-script/RecibirCheckInWeb.gs)
    de este repo.
-4. En el menú de funciones (arriba), elige **configurarEncabezados** y
-   presiona ▶ **Ejecutar** una vez -- crea la fila de encabezados. La
-   primera vez te va a pedir autorizar permisos (es tu propio script sobre
-   tu propia hoja, es seguro aceptar).
-   > Si ya habías corrido una versión anterior, vuelve a correr
-   > `configurarEncabezados` -- los encabezados cambiaron para parecerse
-   > más al sheet real (Forklift, Door, Depa, Pallets, Clerk, PM,
-   > Comentarios, etc.). Nunca borra filas de datos.
-5. Del mismo menú de funciones, elige **configurarTriggerFiltro** y
-   presiona ▶ **Ejecutar** una vez -- así la hoja se filtra sola cada minuto
-   para mostrar nada más las órdenes de **hoy** (de la madrugada 12am-5am
-   también se incluye lo de ayer, por si algo de anoche sigue sin cerrarse).
-   Es un filtro de vista: no borra ni mueve nada, todo el histórico sigue
-   ahí. Si en algún momento quieres refrescarlo a mano, corre
-   **filtrarOrdenesDeHoy** directamente.
-6. **Implementar → Nueva implementación**:
+4. Del menú de funciones (arriba), corre ▶ **Ejecutar** una vez cada una de
+   estas 4 (en cualquier orden). La primera vez te va a pedir autorizar
+   permisos (es tu propio script sobre tu propia hoja, es seguro aceptar).
+   - **configurarEncabezados** -- crea la fila de encabezados.
+     > Si ya habías corrido una versión anterior, vuelve a correrla --
+     > los encabezados cambiaron para parecerse más al sheet real
+     > (Forklift, Door, Depa, Pallets, Clerk, PM, Comentarios, etc.).
+     > Nunca borra filas de datos.
+   - **configurarTriggerFiltro** -- la hoja se filtra sola cada minuto para
+     mostrar nada más las órdenes **activas de hoy**: de la madrugada
+     12am-5am también se incluye lo de ayer, y en cuanto Clerk + Pallets +
+     Shipout ya están los tres llenos, esa orden se oculta de la vista (ya
+     quedó atendida). Es un filtro de vista: no borra ni mueve nada, todo
+     el histórico sigue ahí. Para refrescarlo a mano, corre
+     **filtrarOrdenesDeHoy** directamente.
+   - **configurarTriggerHoraSalida** -- activa que, al marcar el checkbox
+     de la columna **Depa**, la columna **Hora de Salida** se llene sola
+     con la hora actual (igual que en el sheet real, sin que el clerk
+     tenga que escribirla a mano).
+   - **configurarTriggerArchivado** -- activa el mantenimiento semanal
+     (lunes ~4am) que mueve a la pestaña **Base_de_Datos** las órdenes ya
+     100% completas (Forklift, Door, Pallets, Shipout, Clerk y PM llenos)
+     y con más de 2 días -- copia primero, verifica, y solo entonces borra
+     de "Check-Ins". Así la hoja principal no crece para siempre con
+     órdenes ya cerradas.
+5. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**
    - Quién tiene acceso: **Cualquier usuario**
-7. Copia la URL que termina en `/exec` -- la vas a necesitar en el paso 3.
+6. Copia la URL que termina en `/exec` -- la vas a necesitar en el paso 3.
 
-Al marcar el checkbox de la columna **Depa**, la columna **Hora de Salida**
-se llena sola con la hora actual -- igual que en el sheet real, sin que el
-clerk tenga que escribirla a mano.
+**Herramientas manuales** (opcionales, sin trigger -- las corres tú cuando
+quieras desde el menú de funciones): **respaldarTodoABaseDeDatos** copia
+TODO lo que haya en ese momento en "Check-Ins" a "Base_de_Datos", completo o
+no; **limpiarCheckInsDejando48Horas** borra de "Check-Ins" lo de más de 48h,
+pero se niega a correr si no acabas de respaldar primero (por seguridad).
+
+**Formato de filas nuevas:** cada envío del formulario también corre sola
+una función que copia el formato/validación de la fila 2 (tu "plantilla") a
+la fila nueva si le falta, y estira cualquier regla de **Formato
+condicional** (colores) que ya tengas puesta en la hoja para que también
+cubra la fila nueva. No hay que configurar nada para que esto funcione, pero
+tampoco inventa colores por ti: si quieres que las filas se pinten según
+Cargar/Descargar o qué tan avanzada está la orden, esas reglas las creas tú
+a mano en el menú **Formato → Formato condicional** de Google Sheets (una
+sola vez) -- el script solo se encarga de que sigan aplicando según la hoja
+crece.
 
 ## 2. Corre el proyecto en tu máquina (opcional, para probar)
 
@@ -88,7 +111,7 @@ Requiere Node.js 22+.
 
 ```bash
 npm install
-cp .env.example .env.local   # pega tu URL de Apps Script del paso 1.7
+cp .env.example .env.local   # pega tu URL de Apps Script del paso 1.6
 npm run dev
 ```
 
@@ -103,7 +126,7 @@ configuración del repo -- nada que instalar ni ninguna cuenta nueva:
 1. En GitHub, entra a tu repo → **Settings → Secrets and variables →
    Actions → pestaña "Variables"** → **New repository variable**:
    - Name: `NEXT_PUBLIC_APPS_SCRIPT_URL`
-   - Value: la URL que copiaste en el paso 1.7 (termina en `/exec`)
+   - Value: la URL que copiaste en el paso 1.6 (termina en `/exec`)
 2. **Settings → Pages → Build and deployment → Source**: cambia a
    **"GitHub Actions"**.
 
