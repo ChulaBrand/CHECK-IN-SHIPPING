@@ -85,9 +85,17 @@ const CHECKIN_REQUIRED_FIELDS = [
 ];
 
 function doPost(e) {
+  // Log del cuerpo crudo recibido -- para diagnosticar, esto es lo más
+  // importante: si un envío no aparece en el Sheet, este log dice
+  // exactamente qué mandó el navegador y por qué se aceptó o se rechazó.
+  // Se ve en Apps Script → ícono de reloj (Ejecuciones) → clic en la
+  // ejecución → "Registros" / "Logs".
+  Logger.log("doPost recibido: " + (e && e.postData ? e.postData.contents : "(sin postData)"));
+
   const lock = LockService.getScriptLock();
   const tieneLock = lock.tryLock(10000);
   if (!tieneLock) {
+    Logger.log("doPost: no se pudo obtener el lock, se rechazó el envío.");
     return checkinJsonResponse_({
       ok: false,
       error: "El sistema está ocupado, intenta de nuevo.",
@@ -101,6 +109,7 @@ function doPost(e) {
       return !data[field];
     });
     if (missing.length > 0) {
+      Logger.log("doPost: RECHAZADO, faltan campos: " + missing.join(", "));
       return checkinJsonResponse_({
         ok: false,
         error: "Faltan campos: " + missing.join(", "),
@@ -141,8 +150,10 @@ function doPost(e) {
     hoja.getRange(fila, CHECKIN_COL_DEPA).setDataValidation(checkboxRule);
     hoja.getRange(fila, CHECKIN_COL_PM).setDataValidation(checkboxRule);
 
+    Logger.log("doPost: OK, escrito en la fila " + fila);
     return checkinJsonResponse_({ ok: true });
   } catch (err) {
+    Logger.log("doPost: ERROR -- " + String(err));
     return checkinJsonResponse_({ ok: false, error: String(err) });
   } finally {
     lock.releaseLock();
