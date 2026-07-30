@@ -67,14 +67,16 @@
  *   reglas de color de configurarColoresPorEstado (ver abajo) para que
  *   también cubran las filas nuevas.
  * - configurarColoresPorEstado (una sola vez, ver arriba) pinta toda la
- *   fila según su estado: rojo si todavía no está atendida (falta Clerk,
- *   Pallets o Shipout), azul si ya se atendió y era Loading / Cargar, verde
- *   claro si ya se atendió y era Unloading / Descargar. "Atendida" usa el
- *   mismo criterio que ya oculta la orden en filtrarOrdenesDeHoy, para que
- *   ambos comportamientos vayan de la mano. Las reglas quedan visibles en
- *   Formato → Formato condicional como cualquier otra -- si quieres afinar
- *   el tono exacto de cada color, ábrelas ahí y cambia el color; la lógica
- *   no se toca.
+ *   fila según su estado: rojo mientras el checkbox de PM (columna T) no
+ *   esté marcado (así arrancan todas las filas nuevas), azul si PM ya está
+ *   marcado y era Loading / Cargar, verde claro si PM ya está marcado y era
+ *   Unloading / Descargar. Ojo: esto es distinto del criterio que usa
+ *   filtrarOrdenesDeHoy para ocultar (Clerk + Pallets + Shipout) -- una
+ *   fila puede seguir roja aunque el filtro ya la oculte, o verse en
+ *   azul/verde aunque el filtro todavía la muestre. Las reglas quedan
+ *   visibles en Formato → Formato condicional como cualquier otra -- si
+ *   quieres afinar el tono exacto de cada color, ábrelas ahí y cambia el
+ *   color; la lógica no se toca.
  *
  * Herramientas manuales (opcionales, corrida a mano cuando tú quieras --
  * no tienen trigger automático):
@@ -722,16 +724,21 @@ function checkinExtendConditionalFormatting_(sh, dataStartRow, lastRow) {
 
 // Corre esta función UNA sola vez para pintar toda la fila según el estado
 // de la orden:
-//   - Rojo:        todavía no atendida (falta Clerk, Pallets o Shipout).
-//   - Azul:        ya atendida Y era Loading / Cargar.
-//   - Verde claro: ya atendida Y era Unloading / Descargar.
-// "Atendida" usa el mismo criterio que ya oculta la orden en
-// filtrarOrdenesDeHoy (Clerk + Pallets + Shipout llenos), para que ambos
-// comportamientos vayan de la mano. Las 3 reglas quedan visibles en
-// Formato → Formato condicional como cualquier otra -- si quieres afinar el
-// tono exacto de algún color, ábrelo ahí y cámbialo, la lógica no se toca.
-// runFormatOnNewRows_CheckIns_ estira solo el rango de estas reglas según
-// van llegando filas nuevas (no hace falta volver a correr esto).
+//   - Rojo:        todas las filas nuevas empiezan así (mientras PM no
+//                   esté marcado).
+//   - Azul:        PM marcado Y era Loading / Cargar.
+//   - Verde claro: PM marcado Y era Unloading / Descargar.
+// "Atendida" = el checkbox de PM (columna T) marcado -- ya NO usa
+// Clerk/Pallets/Shipout como antes. Ojo: filtrarOrdenesDeHoy todavía oculta
+// la fila con el criterio viejo (Clerk + Pallets + Shipout), así que puede
+// quedar una fila oculta del filtro de "hoy" pero todavía roja (o visible
+// pero ya en azul/verde) si esos dos criterios no coinciden -- avísame si
+// quieres que el filtro también se cambie a PM para que vayan de la mano.
+// Las 3 reglas quedan visibles en Formato → Formato condicional como
+// cualquier otra -- si quieres afinar el tono exacto de algún color, ábrelo
+// ahí y cámbialo, la lógica no se toca. runFormatOnNewRows_CheckIns_ estira
+// solo el rango de estas reglas según van llegando filas nuevas (no hace
+// falta volver a correr esto).
 function configurarColoresPorEstado() {
   const hoja = checkinGetSheet_();
   const numCols = CHECKIN_HEADERS.length;
@@ -739,19 +746,19 @@ function configurarColoresPorEstado() {
   const rangoFilas = hoja.getRange(2, 1, ultimaFila - 2 + 1, numCols);
 
   const reglaNoAtendida = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($A2<>"", OR($S2="", $Q2="", $R2=""))')
+    .whenFormulaSatisfied('=AND($A2<>"", $T2<>TRUE)')
     .setBackground("#FF0000")
     .setRanges([rangoFilas])
     .build();
 
   const reglaCargarAtendida = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($A2<>"", $S2<>"", $Q2<>"", $R2<>"", $I2="Loading / Cargar")')
+    .whenFormulaSatisfied('=AND($A2<>"", $T2=TRUE, $I2="Loading / Cargar")')
     .setBackground("#4A86E8")
     .setRanges([rangoFilas])
     .build();
 
   const reglaDescargarAtendida = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($A2<>"", $S2<>"", $Q2<>"", $R2<>"", $I2="Unloading / Descargar")')
+    .whenFormulaSatisfied('=AND($A2<>"", $T2=TRUE, $I2="Unloading / Descargar")')
     .setBackground("#D9EAD3")
     .setRanges([rangoFilas])
     .build();

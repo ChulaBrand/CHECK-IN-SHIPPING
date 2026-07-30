@@ -83,13 +83,17 @@ etc.) y no se toca ni se mezcla con este.
      de "Check-Ins". Así la hoja principal no crece para siempre con
      órdenes ya cerradas.
    - **configurarColoresPorEstado** -- pinta toda la fila según su estado:
-     🔴 rojo si todavía no está atendida (falta Clerk, Pallets o Shipout),
-     🔵 azul si ya se atendió y era Loading / Cargar, 🟢 verde claro si ya
-     se atendió y era Unloading / Descargar. Las 3 reglas quedan en
-     **Formato → Formato condicional** como cualquier otra -- si algún
-     tono no te convence, ábrelo ahí y cámbialo, no hace falta tocar
-     código. Las filas nuevas quedan cubiertas solas, no hay que volver a
-     correr esto.
+     🔴 rojo mientras el checkbox de **PM** no esté marcado (así arrancan
+     todas las filas nuevas), 🔵 azul en cuanto PM se marca y era Loading /
+     Cargar, 🟢 verde claro si PM se marca y era Unloading / Descargar. Las
+     3 reglas quedan en **Formato → Formato condicional** como cualquier
+     otra -- si algún tono no te convence, ábrelo ahí y cámbialo, no hace
+     falta tocar código. Las filas nuevas quedan cubiertas solas, no hay
+     que volver a correr esto.
+     > Nota: esto es distinto del criterio que usa `configurarTriggerFiltro`
+     > para ocultar órdenes ya atendidas (Clerk + Pallets + Shipout
+     > llenos) -- una fila puede seguir roja aunque el filtro ya la
+     > oculte, o verse en azul/verde aunque el filtro todavía la muestre.
 5. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**
