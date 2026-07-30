@@ -146,7 +146,8 @@ export function CheckInForm() {
 
     setPending(true);
     const ok = await submitWithRetry(APPS_SCRIPT_URL, {
-      driverName: `${answers.firstName} ${answers.lastName}`.trim(),
+      firstName: answers.firstName,
+      lastName: answers.lastName,
       truckOrCompanyName: answers.truckOrCompanyName,
       trailerPlates: answers.trailerPlates,
       driversLicense: answers.driversLicense,

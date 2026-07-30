@@ -7,10 +7,13 @@ Flujo de trabajo:
 
 1. **El chofer** llena el formulario público (`/`) al llegar: datos suyos y
    del camión, si viene a cargar o descargar, qué producto trae, acomodo de
-   la carga y # de orden. Al enviarlo, se guarda como una fila nueva en tu
-   Google Sheet.
-2. **El personal** abre esa misma hoja de Google Sheets y completa el resto
-   a mano: hora de entrada, forklift, dock, # de tarimas, hora de salida.
+   la carga y # de orden. Al enviarlo, se guarda como una fila nueva en la
+   pestaña **"Form responses"** de tu Google Sheet real -- la misma en la
+   que ya escribía Jotform, con el mismo acomodo de columnas.
+2. **El personal** completa el resto directo en el Sheet, igual que ya lo
+   hacía: forklift, dock, tarimas, hora de salida, etc. Toda esa
+   automatización (hora de entrada automática, archivado semanal, formato de
+   filas nuevas) sigue corriendo tal cual, sin tocarse.
 
 No hay servidor ni base de datos propia -- es una página estática (se puede
 hospedar gratis en cualquier lado) que le escribe directo a tu Sheet
@@ -35,28 +38,36 @@ apunta a esa ruta, solo falta que el archivo exista.
   terceros)
 - [Zod](https://zod.dev) para validar el formulario en el navegador
 - [Google Apps Script](https://developers.google.com/apps-script) como
-  puente hacia Google Sheets (código en `google-apps-script/Code.gs`)
+  puente hacia Google Sheets (código en
+  `google-apps-script/RecibirCheckInWeb.gs`)
 
-## 1. Configura tu Google Sheet (una sola vez)
+## 1. Conecta tu Google Sheet real (una sola vez)
 
-1. Crea una hoja de cálculo nueva en Google Sheets. Nombra la primera
-   pestaña **exactamente** `Check-Ins`.
-2. Menú **Extensiones → Apps Script**.
-3. Borra lo que haya en `Code.gs` y pega el contenido completo de
-   [`google-apps-script/Code.gs`](./google-apps-script/Code.gs) de este repo.
-4. En el editor, en el menú desplegable de funciones (arriba), elige
-   **setupHeaders** y presiona ▶ **Ejecutar** una vez. La primera vez te va
-   a pedir autorizar permisos (es tu propio script sobre tu propia hoja, es
-   seguro aceptar). Esto crea la fila de encabezados correcta.
-   > Si ya habías pegado una versión anterior de `Code.gs` y corrido
-   > `setupHeaders` antes, vuelve a correrla después de pegar la versión
-   > nueva -- las columnas cambiaron (se quitó "SP # / Order" sin el `#`,
-   > que nunca se llenaba) y necesitas que los encabezados coincidan.
-5. **Implementar → Nueva implementación**:
+Esto **no** es un Sheet nuevo -- es tu proyecto de Apps Script
+**"CheckInShipping"** de siempre, el que ya tiene `ocultarFilasConSalida.gs`,
+`borrarblnks.gs`, `CopiarInformacion.gs` y `CopiarFormato.gs` corriendo sobre
+la pestaña **"Form responses"**. Solo le agregamos un archivo nuevo que
+recibe los envíos del formulario web -- nada de lo que ya tienes se toca ni
+se reemplaza.
+
+1. Abre ese proyecto de Apps Script (Extensiones → Apps Script desde tu
+   Sheet, o directo en script.google.com).
+2. **Archivos (el ícono +) → Script** → nómbralo `RecibirCheckInWeb` → pega
+   el contenido completo de
+   [`google-apps-script/RecibirCheckInWeb.gs`](./google-apps-script/RecibirCheckInWeb.gs)
+   de este repo.
+3. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**
    - Quién tiene acceso: **Cualquier usuario**
-6. Copia la URL que termina en `/exec` -- la vas a necesitar en el paso 3.
+   > La primera vez te va a pedir autorizar permisos (es tu propio script
+   > sobre tu propia hoja, es seguro aceptar).
+4. Copia la URL que termina en `/exec` -- la vas a necesitar en el paso 3.
+
+> Si vuelves a pegar una versión actualizada de `RecibirCheckInWeb.gs` más
+> adelante, tienes que crear una **nueva implementación** (Implementar →
+> Nueva implementación) para que el cambio aplique -- la URL `/exec` se
+> mantiene igual, no hace falta actualizarla en GitHub cada vez.
 
 ## 2. Corre el proyecto en tu máquina (opcional, para probar)
 
@@ -64,7 +75,7 @@ Requiere Node.js 22+.
 
 ```bash
 npm install
-cp .env.example .env.local   # pega tu URL de Apps Script del paso 1.6
+cp .env.example .env.local   # pega tu URL de Apps Script del paso 1.4
 npm run dev
 ```
 
@@ -79,7 +90,7 @@ configuración del repo -- nada que instalar ni ninguna cuenta nueva:
 1. En GitHub, entra a tu repo → **Settings → Secrets and variables →
    Actions → pestaña "Variables"** → **New repository variable**:
    - Name: `NEXT_PUBLIC_APPS_SCRIPT_URL`
-   - Value: la URL que copiaste en el paso 1.6 (termina en `/exec`)
+   - Value: la URL que copiaste en el paso 1.4 (termina en `/exec`)
 2. **Settings → Pages → Build and deployment → Source**: cambia a
    **"GitHub Actions"**.
 
@@ -113,16 +124,19 @@ Descargar) vive en un solo lugar: `src/lib/wizardSteps.ts`. Cada pantalla es
 un objeto en `COMMON_STEPS`, `LOADING_BRANCH_STEPS` o `UNLOADING_BRANCH_STEPS`
 -- copiar uno existente y ajustarlo es la forma más fácil de agregar uno
 nuevo. Después:
-1. `src/lib/validation.ts`: agrega el validador del campo a `fieldSchemas`.
+1. `src/lib/validation.ts`: agrega el validador del campo a
+   `buildFieldSchemas`.
 2. `src/lib/wizardSteps.ts`: agrega el nuevo `StepConfig` (con su
    `answerKey`) en la rama que corresponda.
-3. `google-apps-script/Code.gs`: agrega el nombre del campo a `HEADERS` y a
-   la lista que arma `appendRow(...)`, y si es obligatorio, a
-   `REQUIRED_FIELDS`.
-4. Vuelve a pegar el `Code.gs` actualizado en el editor de Apps Script
-   (Extensiones → Apps Script en tu Sheet), corre `setupHeaders` de nuevo, y
-   crea una **nueva implementación** (Implementar → Nueva implementación)
-   para que los cambios apliquen -- la URL `/exec` se mantiene igual.
+3. `google-apps-script/RecibirCheckInWeb.gs`: agrega el campo a la lista que
+   arma `doPost(...)`, apuntando a la columna real que le corresponda en
+   "Form responses" (revisa el mapa de columnas en el comentario de arriba
+   del archivo), y si es obligatorio en las dos ramas, a
+   `CHECKIN_REQUIRED_FIELDS`.
+4. Vuelve a pegar el `RecibirCheckInWeb.gs` actualizado en el editor de Apps
+   Script y crea una **nueva implementación** (Implementar → Nueva
+   implementación) para que los cambios apliquen -- la URL `/exec` se
+   mantiene igual.
 
 **Cambiar textos/estilos:** los colores (rosa, azul marino) y el layout de
 cada tipo de pregunta están en `src/components/QuestionCard.tsx`,
