@@ -230,7 +230,7 @@ export function QuestionCard({
   onPrevious: () => void;
 }) {
   return (
-    <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -240,7 +240,7 @@ export function QuestionCard({
         {/* Alto mínimo fijo -- así la tarjeta no cambia de tamaño entre
             preguntas ni cuando aparece un mensaje de error (antes "saltaba"
             al crecer el texto de error). */}
-        <div className="flex min-h-[560px] flex-col justify-center px-6 py-10 text-center sm:px-12">
+        <div className="flex min-h-[480px] flex-col justify-center px-6 py-10 text-center sm:px-12">
           <h2 className="text-2xl font-medium text-neutral-800 sm:text-3xl">
             {step.title[locale]}
             <span className="ml-1 text-red-500">*</span>

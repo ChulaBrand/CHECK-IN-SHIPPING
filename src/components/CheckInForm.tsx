@@ -196,7 +196,7 @@ export function CheckInForm() {
       {phase === "success" && (
         <>
           <CornerLogo />
-          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 px-8 py-16 text-center">
               <h2 className="text-2xl font-semibold text-neutral-900 sm:text-3xl">
                 {ui.successTitle[locale]}
@@ -217,7 +217,7 @@ export function CheckInForm() {
         <div>
           <CornerLogo />
           {submitFailed && (
-            <div className="mx-auto mb-4 w-full max-w-3xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-red-800">
+            <div className="mx-auto mb-4 w-full max-w-4xl rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-red-800">
               {APPS_SCRIPT_URL
                 ? ui.failedToSend[locale]
                 : ui.notConnected[locale]}
