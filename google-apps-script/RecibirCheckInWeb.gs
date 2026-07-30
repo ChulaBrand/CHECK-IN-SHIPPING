@@ -217,9 +217,10 @@ function configurarEncabezados() {
 // anoche sigue sin cerrarse). Es un filtro de VISTA: no borra ni mueve
 // nada, todo el histórico sigue ahí, nada más se oculta.
 //
-// Corre sola cada hora una vez que armes el trigger (ver
-// configurarTriggerFiltro más abajo, se corre UNA vez), para que el filtro
-// se refresque solo al cambiar de día. También la puedes correr a mano
+// Corre sola cada minuto una vez que armes el trigger (ver
+// configurarTriggerFiltro más abajo, se corre UNA vez) -- mismo intervalo
+// que usaba el sheet real, para que la vista se sienta "en vivo" según se
+// van marcando las órdenes como atendidas. También la puedes correr a mano
 // cuando quieras desde el menú de funciones de arriba.
 function filtrarOrdenesDeHoy() {
   const hoja = checkinGetSheet_();
@@ -263,8 +264,9 @@ function filtrarOrdenesDeHoy() {
 }
 
 // Ejecuta esta función UNA vez a mano para que filtrarOrdenesDeHoy() se
-// refresque sola cada hora (así el filtro cambia de día solo, sin que
-// nadie tenga que acordarse de correrlo a mano cada mañana).
+// refresque sola cada minuto -- mismo intervalo que usaba el sheet real
+// (igual que registrarHoraReal), para que la vista se sienta "en vivo" según
+// las órdenes se van marcando como atendidas.
 function configurarTriggerFiltro() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(function (t) {
@@ -273,9 +275,9 @@ function configurarTriggerFiltro() {
     }
   });
 
-  ScriptApp.newTrigger("filtrarOrdenesDeHoy").timeBased().everyHours(1).create();
+  ScriptApp.newTrigger("filtrarOrdenesDeHoy").timeBased().everyMinutes(1).create();
 
-  Logger.log("Trigger configurado: filtrarOrdenesDeHoy cada hora.");
+  Logger.log("Trigger configurado: filtrarOrdenesDeHoy cada minuto.");
 }
 
 function checkinGetSheet_() {

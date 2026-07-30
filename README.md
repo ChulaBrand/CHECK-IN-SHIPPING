@@ -66,7 +66,7 @@ etc.) y no se toca ni se mezcla con este.
    > más al sheet real (Forklift, Door, Depa, Pallets, Clerk, PM,
    > Comentarios, etc.). Nunca borra filas de datos.
 5. Del mismo menú de funciones, elige **configurarTriggerFiltro** y
-   presiona ▶ **Ejecutar** una vez -- así la hoja se filtra sola cada hora
+   presiona ▶ **Ejecutar** una vez -- así la hoja se filtra sola cada minuto
    para mostrar nada más las órdenes de **hoy** (de la madrugada 12am-5am
    también se incluye lo de ayer, por si algo de anoche sigue sin cerrarse).
    Es un filtro de vista: no borra ni mueve nada, todo el histórico sigue
