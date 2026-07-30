@@ -229,15 +229,6 @@ export function QuestionCard({
   onNext: () => void;
   onPrevious: () => void;
 }) {
-  // Los pasos que abren el teclado del iPad (texto/teléfono/nombre) usan un
-  // acomodo horizontal (título a la izquierda, campo a la derecha) en vez de
-  // apilado -- así la tarjeta se queda angosta de alto y el botón Next nunca
-  // termina empujado detrás del teclado ni hay que buscarlo. Los pasos de
-  // opciones (radio/select/checkboxes) no abren teclado, así que pueden
-  // seguir apilados y crecer con .question-card-body (ver globals.css).
-  const opensKeyboard =
-    step.kind === "text" || step.kind === "tel" || step.kind === "name-split";
-
   return (
     <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl">
       <form
@@ -246,49 +237,32 @@ export function QuestionCard({
           onNext();
         }}
       >
-        {opensKeyboard ? (
-          <div className="flex min-h-[180px] flex-col justify-center gap-4 px-6 py-8 text-center sm:min-h-[160px] sm:flex-row sm:items-center sm:gap-10 sm:px-12 sm:text-left">
-            <div className="shrink-0 sm:w-60">
-              <h2 className="text-2xl font-medium text-neutral-800 sm:text-3xl">
-                {step.title[locale]}
-                <span className="ml-1 text-red-500">*</span>
-              </h2>
-              {step.subtitle && (
-                <p className="mt-1 text-neutral-400">{step.subtitle[locale]}</p>
-              )}
-            </div>
+        {/* Como en el Jotform real: el título siempre va arriba del campo,
+            nunca al lado -- lo que cambia es que la tarjeta se queda
+            compacta de alto (relleno chico, sin crecer con dvh) y se apoya
+            en el ancho completo (max-w-6xl arriba) en vez de estirarse
+            verticalmente. min-h-[160px] es solo un piso para que pasos con
+            un título de una sola línea no se vean angostos, no una meta a
+            alcanzar. */}
+        <div className="flex min-h-[160px] flex-col justify-center px-6 py-6 text-center sm:px-10">
+          <h2 className="text-2xl font-medium text-neutral-800 sm:text-3xl">
+            {step.title[locale]}
+            <span className="ml-1 text-red-500">*</span>
+          </h2>
+          {step.subtitle && (
+            <p className="mt-1 text-neutral-400">{step.subtitle[locale]}</p>
+          )}
 
-            <div className="flex-1 text-left">
-              <Field step={step} answers={answers} setAnswer={setAnswer} locale={locale} />
-              {/* Siempre montado (con o sin texto) para reservar el espacio y
-                  que el error no empuje el layout. */}
-              <p className="mt-2 min-h-[1.5rem] text-sm text-red-600">
-                {error ?? ""}
-              </p>
-            </div>
+          <div className="mt-4 text-left">
+            <Field step={step} answers={answers} setAnswer={setAnswer} locale={locale} />
           </div>
-        ) : (
-          // Alto mínimo: crece cuando hay espacio (ver .question-card-body en
-          // globals.css, usa dvh) pero nunca baja de 240px. Estos pasos no
-          // abren teclado, así que no hay riesgo de tapar los botones.
-          <div className="question-card-body flex min-h-[240px] flex-col justify-center px-6 py-10 text-center sm:px-12">
-            <h2 className="text-2xl font-medium text-neutral-800 sm:text-3xl">
-              {step.title[locale]}
-              <span className="ml-1 text-red-500">*</span>
-            </h2>
-            {step.subtitle && (
-              <p className="mt-1 text-neutral-400">{step.subtitle[locale]}</p>
-            )}
 
-            <div className="mt-8 text-left">
-              <Field step={step} answers={answers} setAnswer={setAnswer} locale={locale} />
-            </div>
-
-            <p className="mt-3 min-h-[1.5rem] text-sm text-red-600">
-              {error ?? ""}
-            </p>
-          </div>
-        )}
+          {/* Siempre montado (con o sin texto) para reservar el espacio y
+              que el error no empuje el layout. */}
+          <p className="mt-2 min-h-[1.5rem] text-sm text-red-600">
+            {error ?? ""}
+          </p>
+        </div>
 
         <div className="grid grid-cols-2">
           <button
