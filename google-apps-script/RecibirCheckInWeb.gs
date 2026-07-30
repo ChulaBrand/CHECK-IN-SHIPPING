@@ -40,6 +40,11 @@
  * Al marcar el checkbox de la columna O (Depa), la columna P (Hora de
  * Salida) se llena sola con la hora actual -- igual que en el sheet real,
  * para que el clerk no tenga que escribirla a mano.
+ *
+ * Filtro de "solo hoy": corre configurarTriggerFiltro UNA vez (mismo menú
+ * de funciones de arriba) para que la hoja se filtre sola y muestre nada
+ * más las órdenes de hoy (o de ayer+hoy en la madrugada). El histórico
+ * completo sigue ahí -- es un filtro de vista, no borra nada.
  */
 
 const CHECKIN_SHEET_NAME = "Check-Ins";
@@ -205,6 +210,72 @@ function configurarEncabezados() {
   const hoja = checkinGetSheet_();
   hoja.getRange(1, 1, 1, CHECKIN_HEADERS.length).setValues([CHECKIN_HEADERS]);
   hoja.setFrozenRows(1);
+}
+
+// Filtra la vista de la hoja para mostrar solo las órdenes de HOY --
+// (de la madrugada 12am-5am también se incluye lo de ayer, por si algo de
+// anoche sigue sin cerrarse). Es un filtro de VISTA: no borra ni mueve
+// nada, todo el histórico sigue ahí, nada más se oculta.
+//
+// Corre sola cada hora una vez que armes el trigger (ver
+// configurarTriggerFiltro más abajo, se corre UNA vez), para que el filtro
+// se refresque solo al cambiar de día. También la puedes correr a mano
+// cuando quieras desde el menú de funciones de arriba.
+function filtrarOrdenesDeHoy() {
+  const hoja = checkinGetSheet_();
+
+  if (hoja.getFilter()) {
+    hoja.getFilter().remove();
+  }
+
+  const ultimaFila = hoja.getLastRow();
+  const ultimaColumna = hoja.getLastColumn();
+  if (ultimaFila < 2) return; // solo encabezados, no hay nada que filtrar
+
+  // El rango del filtro incluye la fila de encabezados (1) hasta la
+  // última fila con datos.
+  const rangoFiltro = hoja.getRange(1, 1, ultimaFila, ultimaColumna);
+  rangoFiltro.createFilter();
+  const filtro = hoja.getFilter();
+
+  const ahora = new Date();
+  const hora = ahora.getHours();
+  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
+  let criterioFecha;
+  if (hora >= 0 && hora < 5) {
+    // Madrugada: incluye ayer + hoy, por si algo de anoche sigue abierto.
+    const ayer = new Date(hoy);
+    ayer.setDate(hoy.getDate() - 1);
+    const mananaLimite = new Date(hoy);
+    mananaLimite.setDate(hoy.getDate() + 1);
+
+    const formula =
+      "=AND($A2>=DATE(" + ayer.getFullYear() + "," + (ayer.getMonth() + 1) + "," + ayer.getDate() + ")," +
+      "$A2<DATE(" + mananaLimite.getFullYear() + "," + (mananaLimite.getMonth() + 1) + "," + mananaLimite.getDate() + "))";
+
+    criterioFecha = SpreadsheetApp.newFilterCriteria().whenFormulaSatisfied(formula).build();
+  } else {
+    criterioFecha = SpreadsheetApp.newFilterCriteria().whenDateEqualTo(hoy).build();
+  }
+
+  filtro.setColumnFilterCriteria(1, criterioFecha); // columna A = Date
+}
+
+// Ejecuta esta función UNA vez a mano para que filtrarOrdenesDeHoy() se
+// refresque sola cada hora (así el filtro cambia de día solo, sin que
+// nadie tenga que acordarse de correrlo a mano cada mañana).
+function configurarTriggerFiltro() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function (t) {
+    if (t.getHandlerFunction() === "filtrarOrdenesDeHoy") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  ScriptApp.newTrigger("filtrarOrdenesDeHoy").timeBased().everyHours(1).create();
+
+  Logger.log("Trigger configurado: filtrarOrdenesDeHoy cada hora.");
 }
 
 function checkinGetSheet_() {

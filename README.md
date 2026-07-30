@@ -65,11 +65,18 @@ etc.) y no se toca ni se mezcla con este.
    > `configurarEncabezados` -- los encabezados cambiaron para parecerse
    > más al sheet real (Forklift, Door, Depa, Pallets, Clerk, PM,
    > Comentarios, etc.). Nunca borra filas de datos.
-5. **Implementar → Nueva implementación**:
+5. Del mismo menú de funciones, elige **configurarTriggerFiltro** y
+   presiona ▶ **Ejecutar** una vez -- así la hoja se filtra sola cada hora
+   para mostrar nada más las órdenes de **hoy** (de la madrugada 12am-5am
+   también se incluye lo de ayer, por si algo de anoche sigue sin cerrarse).
+   Es un filtro de vista: no borra ni mueve nada, todo el histórico sigue
+   ahí. Si en algún momento quieres refrescarlo a mano, corre
+   **filtrarOrdenesDeHoy** directamente.
+6. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**
    - Quién tiene acceso: **Cualquier usuario**
-6. Copia la URL que termina en `/exec` -- la vas a necesitar en el paso 3.
+7. Copia la URL que termina en `/exec` -- la vas a necesitar en el paso 3.
 
 Al marcar el checkbox de la columna **Depa**, la columna **Hora de Salida**
 se llena sola con la hora actual -- igual que en el sheet real, sin que el
@@ -81,7 +88,7 @@ Requiere Node.js 22+.
 
 ```bash
 npm install
-cp .env.example .env.local   # pega tu URL de Apps Script del paso 1.6
+cp .env.example .env.local   # pega tu URL de Apps Script del paso 1.7
 npm run dev
 ```
 
@@ -96,7 +103,7 @@ configuración del repo -- nada que instalar ni ninguna cuenta nueva:
 1. En GitHub, entra a tu repo → **Settings → Secrets and variables →
    Actions → pestaña "Variables"** → **New repository variable**:
    - Name: `NEXT_PUBLIC_APPS_SCRIPT_URL`
-   - Value: la URL que copiaste en el paso 1.6 (termina en `/exec`)
+   - Value: la URL que copiaste en el paso 1.7 (termina en `/exec`)
 2. **Settings → Pages → Build and deployment → Source**: cambia a
    **"GitHub Actions"**.
 
