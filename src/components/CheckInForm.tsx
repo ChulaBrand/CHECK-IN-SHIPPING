@@ -86,7 +86,22 @@ export function CheckInForm() {
   const currentStep = steps[currentIndex];
 
   function setAnswer<K extends keyof Answers>(key: K, value: Answers[K]) {
-    setAnswers((prev) => ({ ...prev, [key]: value }));
+    setAnswers((prev) => {
+      const next = { ...prev, [key]: value };
+      // Cambiar de rama (Cargar/Descargar) no debe dejar pegadas las
+      // respuestas de la rama que ya no aplica -- si no, el envío manda los
+      // campos de las dos ramas a la vez (ej. Placas Y Producto juntos).
+      if (key === "loadingType") {
+        next.trailerPlates = emptyAnswers.trailerPlates;
+        next.driversLicense = emptyAnswers.driversLicense;
+        next.spNumberOrder2 = emptyAnswers.spNumberOrder2;
+        next.loadAccommodation = emptyAnswers.loadAccommodation;
+        next.unitNumber = emptyAnswers.unitNumber;
+        next.produceTypes = emptyAnswers.produceTypes;
+        next.produceTypeOther = emptyAnswers.produceTypeOther;
+      }
+      return next;
+    });
     setError(undefined);
   }
 
