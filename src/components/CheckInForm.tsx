@@ -198,6 +198,22 @@ export function CheckInForm() {
           <CornerLogo />
           <div className="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 px-8 py-16 text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-10 w-10 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                  aria-hidden
+                >
+                  <path
+                    d="M5 13l4 4L19 7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
               <h2 className="text-2xl font-semibold text-neutral-900 sm:text-3xl">
                 {ui.successTitle[locale]}
               </h2>

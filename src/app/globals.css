@@ -14,3 +14,15 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Alto de la tarjeta de pregunta: tan grande como quepa, pero nunca tan
+   grande que tape los botones cuando el teclado del iPad está abierto.
+   "dvh" (a diferencia de "vh") sí se achica cuando aparece el teclado en
+   Safari/iOS moderno, así que esto crece solo cuando hay espacio real
+   disponible. En navegadores sin soporte de dvh, se queda en el mínimo fijo
+   de Tailwind (min-h-[240px]) que ya puso el elemento. */
+@supports (height: 1dvh) {
+  .question-card-body {
+    min-height: clamp(240px, 55dvh, 480px);
+  }
+}

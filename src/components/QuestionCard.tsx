@@ -237,15 +237,14 @@ export function QuestionCard({
           onNext();
         }}
       >
-        {/* Alto mínimo fijo -- así la tarjeta no cambia de tamaño entre
-            preguntas ni cuando aparece un mensaje de error (antes "saltaba"
-            al crecer el texto de error). Se mantiene compacto a propósito:
-            el formulario se llena en iPad, y con el teclado en pantalla solo
-            queda una franja angosta arriba -- tiene que caber la tarjeta
-            completa (con los botones) en ese espacio, como en el Jotform
-            real. Los pasos de checkboxes (que no usan teclado) crecen más
-            allá de este mínimo sin problema. */}
-        <div className="flex min-h-[240px] flex-col justify-center px-6 py-10 text-center sm:px-12">
+        {/* Alto mínimo: crece cuando hay espacio (ver .question-card-body en
+            globals.css, usa dvh) pero nunca baja de 240px -- lo justo para
+            que quepa la tarjeta completa (con los botones) arriba del
+            teclado del iPad, como en el Jotform real. Los pasos de
+            checkboxes (que no usan teclado) crecen más allá de ese mínimo
+            sin problema. El error tampoco cambia el alto -- el espacio ya
+            está reservado. */}
+        <div className="question-card-body flex min-h-[240px] flex-col justify-center px-6 py-10 text-center sm:px-12">
           <h2 className="text-2xl font-medium text-neutral-800 sm:text-3xl">
             {step.title[locale]}
             <span className="ml-1 text-red-500">*</span>
