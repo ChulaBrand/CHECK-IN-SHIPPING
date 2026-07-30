@@ -230,7 +230,7 @@ export function QuestionCard({
   onPrevious: () => void;
 }) {
   return (
-    <div className="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl">
       <form
         onSubmit={(e) => {
           e.preventDefault();
