@@ -8,14 +8,20 @@ export function WelcomeScreen({
   locale: Locale;
   onStart: () => void;
 }) {
+  // Alto total fijo en 400px (pedido exacto) -- se reparte entre la sección
+  // azul (flex-1, crece/encoge para llenar lo que sobra) y el botón de
+  // abajo, que se queda con su alto natural.
   return (
-    <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-2xl shadow-2xl">
-      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 bg-[#141b4d] px-8 py-14 text-center">
+    <div
+      className="mx-auto flex w-full max-w-[800px] flex-col overflow-hidden rounded-2xl shadow-2xl"
+      style={{ height: "400px" }}
+    >
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden bg-[#141b4d] px-8 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={assetPath("/chula-brand-logo.png")}
           alt="Chula Brand"
-          className="mb-2 h-32 w-auto"
+          className="h-24 w-auto"
         />
         <h1 className="text-3xl font-bold text-white sm:text-4xl">
           {ui.welcomeTitle[locale]}

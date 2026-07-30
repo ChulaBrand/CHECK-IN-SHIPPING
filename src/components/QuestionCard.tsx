@@ -123,7 +123,7 @@ function Field({
 
     case "radio":
       return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-row gap-3">
           {step.options?.map((option) => {
             const checked = step.answerKey
               ? answers[step.answerKey] === option
@@ -132,7 +132,7 @@ function Field({
               <label
                 key={option}
                 className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-neutral-700",
+                  "flex flex-1 cursor-pointer items-center justify-center gap-3 rounded-md border px-4 py-3 text-neutral-700",
                   checked ? "border-[#ff2d78]" : "border-neutral-300"
                 )}
               >
@@ -229,23 +229,47 @@ export function QuestionCard({
   onNext: () => void;
   onPrevious: () => void;
 }) {
+  // Medidas exactas pedidas: los pasos de un solo campo (texto/teléfono/
+  // nombre) y el de Cargar-o-Descargar tienen un alto TOTAL fijo (tarjeta +
+  // botones). Los de checkboxes (muchas opciones) se quedan con el alto
+  // natural de siempre -- no llevan número fijo.
+  const FIXED_TOTAL_HEIGHT: Partial<Record<typeof step.kind, number>> = {
+    "name-split": 200,
+    tel: 200,
+    text: 200,
+    radio: 240,
+  };
+  const fixedHeight = FIXED_TOTAL_HEIGHT[step.kind];
+
   return (
-    <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div
+      className="mx-auto flex w-full max-w-[800px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+      style={fixedHeight ? { height: `${fixedHeight}px` } : undefined}
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
           onNext();
         }}
+        className="flex flex-1 flex-col overflow-hidden"
       >
         {/* Como en el Jotform real: el título siempre va arriba del campo,
-            nunca al lado -- lo que cambia es que la tarjeta se queda
-            compacta de alto (relleno chico, sin crecer con dvh) y se apoya
-            en el ancho completo (max-w-6xl arriba) en vez de estirarse
-            verticalmente. min-h-[160px] es solo un piso para que pasos con
-            un título de una sola línea no se vean angostos, no una meta a
-            alcanzar. */}
-        <div className="flex min-h-[160px] flex-col justify-center px-6 py-6 text-center sm:px-10">
-          <h2 className="text-2xl font-medium text-neutral-800 sm:text-3xl">
+            nunca al lado. Los pasos con alto fijo (ver FIXED_TOTAL_HEIGHT)
+            reparten ese alto entre este cuerpo y la franja de botones de
+            abajo; los demás (checkboxes) usan min-h-[160px] como piso y
+            crecen con el contenido, igual que antes. */}
+        <div
+          className={cn(
+            "flex flex-col justify-center px-6 text-center sm:px-10",
+            fixedHeight ? "flex-1 overflow-hidden py-3" : "min-h-[160px] py-6"
+          )}
+        >
+          <h2
+            className={cn(
+              "font-medium text-neutral-800",
+              fixedHeight ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl"
+            )}
+          >
             {step.title[locale]}
             <span className="ml-1 text-red-500">*</span>
           </h2>
@@ -253,13 +277,18 @@ export function QuestionCard({
             <p className="mt-1 text-neutral-400">{step.subtitle[locale]}</p>
           )}
 
-          <div className="mt-4 text-left">
+          <div className={cn("text-left", fixedHeight ? "mt-2" : "mt-4")}>
             <Field step={step} answers={answers} setAnswer={setAnswer} locale={locale} />
           </div>
 
           {/* Siempre montado (con o sin texto) para reservar el espacio y
               que el error no empuje el layout. */}
-          <p className="mt-2 min-h-[1.5rem] text-sm text-red-600">
+          <p
+            className={cn(
+              "text-red-600",
+              fixedHeight ? "mt-1 min-h-[1.25rem] text-xs" : "mt-3 min-h-[1.5rem] text-sm"
+            )}
+          >
             {error ?? ""}
           </p>
         </div>
