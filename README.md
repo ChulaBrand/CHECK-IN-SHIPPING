@@ -58,7 +58,7 @@ etc.) y no se toca ni se mezcla con este.
    [`google-apps-script/RecibirCheckInWeb.gs`](./google-apps-script/RecibirCheckInWeb.gs)
    de este repo.
 4. Del menú de funciones (arriba), corre ▶ **Ejecutar** una vez cada una de
-   estas 5 (en cualquier orden). La primera vez te va a pedir autorizar
+   estas 4 (en cualquier orden). La primera vez te va a pedir autorizar
    permisos (es tu propio script sobre tu propia hoja, es seguro aceptar).
    - **configurarEncabezados** -- crea la fila de encabezados.
      > Si ya habías corrido una versión anterior, vuelve a correrla --
@@ -82,17 +82,6 @@ etc.) y no se toca ni se mezcla con este.
      y con más de 2 días -- copia primero, verifica, y solo entonces borra
      de "Check-Ins". Así la hoja principal no crece para siempre con
      órdenes ya cerradas.
-   - **configurarColoresPorEstado** -- pinta toda la fila según su estado
-     (ya no distingue Cargar/Descargar): 🔴 rojo mientras el checkbox de
-     **PM** no esté marcado (así arrancan todas las filas nuevas), 🔵 azul
-     en cuanto PM se marca. Las reglas quedan en **Formato → Formato
-     condicional** como cualquier otra -- si algún tono no te convence,
-     ábrelo ahí y cámbialo, no hace falta tocar código. Las filas nuevas
-     quedan cubiertas solas, no hay que volver a correr esto.
-     > Nota: esto es distinto del criterio que usa `configurarTriggerFiltro`
-     > para ocultar órdenes ya atendidas (Clerk + Pallets + Shipout
-     > llenos) -- una fila puede seguir roja aunque el filtro ya la
-     > oculte, o verse en azul/verde aunque el filtro todavía la muestre.
 5. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**
@@ -107,14 +96,16 @@ pero se niega a correr si no acabas de respaldar primero (por seguridad).
 
 **Formato de filas nuevas:** cada envío del formulario también corre sola
 una función que copia el formato/validación de la fila 2 (tu "plantilla") a
-la fila nueva si le falta, y estira cualquier regla de **Formato
-condicional** (colores) que ya tengas puesta en la hoja para que también
-cubra la fila nueva. No hay que configurar nada para que esto funcione, pero
-tampoco inventa colores por ti: si quieres que las filas se pinten según
-Cargar/Descargar o qué tan avanzada está la orden, esas reglas las creas tú
-a mano en el menú **Formato → Formato condicional** de Google Sheets (una
-sola vez) -- el script solo se encarga de que sigan aplicando según la hoja
-crece.
+la fila nueva si le falta (por ejemplo, si configuraste un menú desplegable
+fijo en Forklift/Door en esa fila). No hay que configurar nada para que esto
+funcione.
+
+**Colores de fila:** este script no crea ni mantiene ninguna regla de
+color -- si quieres pintar filas según su estado, configúralo tú a mano en
+el menú **Formato → Formato condicional** de Google Sheets. Si alguna vez
+quieres borrar TODAS las reglas que haya (las tuyas o las de una versión
+anterior de este script) para empezar de cero, corre **quitarFormatoCondicional**
+una vez desde el menú de funciones.
 
 ## 2. Corre el proyecto en tu máquina (opcional, para probar)
 
