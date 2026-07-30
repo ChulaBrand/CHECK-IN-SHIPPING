@@ -58,7 +58,7 @@ etc.) y no se toca ni se mezcla con este.
    [`google-apps-script/RecibirCheckInWeb.gs`](./google-apps-script/RecibirCheckInWeb.gs)
    de este repo.
 4. Del menú de funciones (arriba), corre ▶ **Ejecutar** una vez cada una de
-   estas 4 (en cualquier orden). La primera vez te va a pedir autorizar
+   estas 5 (en cualquier orden). La primera vez te va a pedir autorizar
    permisos (es tu propio script sobre tu propia hoja, es seguro aceptar).
    - **configurarEncabezados** -- crea la fila de encabezados.
      > Si ya habías corrido una versión anterior, vuelve a correrla --
@@ -82,6 +82,14 @@ etc.) y no se toca ni se mezcla con este.
      y con más de 2 días -- copia primero, verifica, y solo entonces borra
      de "Check-Ins". Así la hoja principal no crece para siempre con
      órdenes ya cerradas.
+   - **configurarColoresPorEstado** -- pinta toda la fila según su estado:
+     🔴 rojo si todavía no está atendida (falta Clerk, Pallets o Shipout),
+     🔵 azul si ya se atendió y era Loading / Cargar, 🟢 verde claro si ya
+     se atendió y era Unloading / Descargar. Las 3 reglas quedan en
+     **Formato → Formato condicional** como cualquier otra -- si algún
+     tono no te convence, ábrelo ahí y cámbialo, no hace falta tocar
+     código. Las filas nuevas quedan cubiertas solas, no hay que volver a
+     correr esto.
 5. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**

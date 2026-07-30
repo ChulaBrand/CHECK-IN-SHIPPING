@@ -13,13 +13,16 @@
  * 2. Menú **Extensiones → Apps Script**.
  * 3. Borra lo que haya en `Code.gs` y pega este archivo completo.
  * 4. Del menú de funciones (arriba), corre ▶ **Ejecutar** una vez cada una
- *    de estas 4 (en cualquier orden), autorizando permisos la primera vez:
+ *    de estas 5 (en cualquier orden), autorizando permisos la primera vez:
  *      - **configurarEncabezados**       -- crea la fila de encabezados.
  *      - **configurarTriggerFiltro**     -- filtra la vista a "solo hoy".
  *      - **configurarTriggerHoraSalida** -- Depa marcado -> Hora de Salida
  *        automática.
  *      - **configurarTriggerArchivado**  -- archivado semanal de órdenes
  *        completadas y viejas (ver abajo).
+ *      - **configurarColoresPorEstado**  -- pinta las filas: rojo = no
+ *        atendida, azul = atendida y era Cargar, verde = atendida y era
+ *        Descargar (ver abajo).
  *    > Si ya habías corrido una versión anterior de este archivo, vuelve a
  *    > correr `configurarEncabezados` -- los encabezados cambiaron para
  *    > parecerse más al sheet real. No borra ninguna fila de datos.
@@ -60,13 +63,18 @@
  *   formulario (no hay que configurar nada): si le falta el formato o los
  *   menús desplegables/checkboxes de Forklift/Door/Pallets/Shipout a una
  *   fila nueva, se los copia de la fila 2 (tu "plantilla" -- config˙úrala a
- *   mano una vez ahí si quieres esos controles fijos), y estira cualquier
- *   regla de Formato condicional (colores) que ya tengas puesta en la hoja
- *   para que también cubra las filas nuevas. Esta función NO inventa ni
- *   define colores -- si quieres que las filas se pinten según
- *   Cargar/Descargar o según qué tan avanzada está la orden, configura esas
- *   reglas tú en el menú Formato → Formato condicional (una sola vez); esta
- *   función solo se encarga de que sigan aplicando según crece la hoja.
+ *   mano una vez ahí si quieres esos controles fijos), y estira las 3
+ *   reglas de color de configurarColoresPorEstado (ver abajo) para que
+ *   también cubran las filas nuevas.
+ * - configurarColoresPorEstado (una sola vez, ver arriba) pinta toda la
+ *   fila según su estado: rojo si todavía no está atendida (falta Clerk,
+ *   Pallets o Shipout), azul si ya se atendió y era Loading / Cargar, verde
+ *   claro si ya se atendió y era Unloading / Descargar. "Atendida" usa el
+ *   mismo criterio que ya oculta la orden en filtrarOrdenesDeHoy, para que
+ *   ambos comportamientos vayan de la mano. Las reglas quedan visibles en
+ *   Formato → Formato condicional como cualquier otra -- si quieres afinar
+ *   el tono exacto de cada color, ábrelas ahí y cambia el color; la lógica
+ *   no se toca.
  *
  * Herramientas manuales (opcionales, corrida a mano cuando tú quieras --
  * no tienen trigger automático):
@@ -710,6 +718,49 @@ function checkinExtendConditionalFormatting_(sh, dataStartRow, lastRow) {
   });
 
   sh.setConditionalFormatRules(newRules);
+}
+
+// Corre esta función UNA sola vez para pintar toda la fila según el estado
+// de la orden:
+//   - Rojo:        todavía no atendida (falta Clerk, Pallets o Shipout).
+//   - Azul:        ya atendida Y era Loading / Cargar.
+//   - Verde claro: ya atendida Y era Unloading / Descargar.
+// "Atendida" usa el mismo criterio que ya oculta la orden en
+// filtrarOrdenesDeHoy (Clerk + Pallets + Shipout llenos), para que ambos
+// comportamientos vayan de la mano. Las 3 reglas quedan visibles en
+// Formato → Formato condicional como cualquier otra -- si quieres afinar el
+// tono exacto de algún color, ábrelo ahí y cámbialo, la lógica no se toca.
+// runFormatOnNewRows_CheckIns_ estira solo el rango de estas reglas según
+// van llegando filas nuevas (no hace falta volver a correr esto).
+function configurarColoresPorEstado() {
+  const hoja = checkinGetSheet_();
+  const numCols = CHECKIN_HEADERS.length;
+  const ultimaFila = Math.max(hoja.getLastRow(), 2);
+  const rangoFilas = hoja.getRange(2, 1, ultimaFila - 2 + 1, numCols);
+
+  const reglaNoAtendida = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=AND($A2<>"", OR($S2="", $Q2="", $R2=""))')
+    .setBackground("#F4CCCC")
+    .setRanges([rangoFilas])
+    .build();
+
+  const reglaCargarAtendida = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=AND($A2<>"", $S2<>"", $Q2<>"", $R2<>"", $I2="Loading / Cargar")')
+    .setBackground("#C9DAF8")
+    .setRanges([rangoFilas])
+    .build();
+
+  const reglaDescargarAtendida = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=AND($A2<>"", $S2<>"", $Q2<>"", $R2<>"", $I2="Unloading / Descargar")')
+    .setBackground("#D9EAD3")
+    .setRanges([rangoFilas])
+    .build();
+
+  // setConditionalFormatRules REEMPLAZA todas las reglas -- así correr esto
+  // de nuevo no va acumulando copias viejas.
+  hoja.setConditionalFormatRules([reglaNoAtendida, reglaCargarAtendida, reglaDescargarAtendida]);
+
+  Logger.log("configurarColoresPorEstado: 3 reglas creadas -- rojo (no atendida), azul (Cargar atendida), verde (Descargar atendida).");
 }
 
 // Convierte números de fila sueltos en bloques consecutivos, ej.
