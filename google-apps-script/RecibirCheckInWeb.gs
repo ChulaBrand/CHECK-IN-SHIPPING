@@ -63,17 +63,16 @@
  *   formulario (no hay que configurar nada): si le falta el formato o los
  *   menús desplegables/checkboxes de Forklift/Door/Pallets/Shipout a una
  *   fila nueva, se los copia de la fila 2 (tu "plantilla" -- config˙úrala a
- *   mano una vez ahí si quieres esos controles fijos), y estira las 3
+ *   mano una vez ahí si quieres esos controles fijos), y estira las 2
  *   reglas de color de configurarColoresPorEstado (ver abajo) para que
  *   también cubran las filas nuevas.
  * - configurarColoresPorEstado (una sola vez, ver arriba) pinta toda la
- *   fila según su estado: rojo mientras el checkbox de PM (columna T) no
- *   esté marcado (así arrancan todas las filas nuevas), azul si PM ya está
- *   marcado y era Loading / Cargar, verde claro si PM ya está marcado y era
- *   Unloading / Descargar. Ojo: esto es distinto del criterio que usa
- *   filtrarOrdenesDeHoy para ocultar (Clerk + Pallets + Shipout) -- una
- *   fila puede seguir roja aunque el filtro ya la oculte, o verse en
- *   azul/verde aunque el filtro todavía la muestre. Las reglas quedan
+ *   fila según su estado (ya no distingue Cargar/Descargar): rojo mientras
+ *   el checkbox de PM (columna T) no esté marcado (así arrancan todas las
+ *   filas nuevas), azul en cuanto PM se marca. Ojo: esto es distinto del
+ *   criterio que usa filtrarOrdenesDeHoy para ocultar (Clerk + Pallets +
+ *   Shipout) -- una fila puede seguir roja aunque el filtro ya la oculte, o
+ *   verse azul aunque el filtro todavía la muestre. Las reglas quedan
  *   visibles en Formato → Formato condicional como cualquier otra -- si
  *   quieres afinar el tono exacto de cada color, ábrelas ahí y cambia el
  *   color; la lógica no se toca.
@@ -723,18 +722,16 @@ function checkinExtendConditionalFormatting_(sh, dataStartRow, lastRow) {
 }
 
 // Corre esta función UNA sola vez para pintar toda la fila según el estado
-// de la orden:
-//   - Rojo:        todas las filas nuevas empiezan así (mientras PM no
-//                   esté marcado).
-//   - Azul:        PM marcado Y era Loading / Cargar.
-//   - Verde claro: PM marcado Y era Unloading / Descargar.
-// "Atendida" = el checkbox de PM (columna T) marcado -- ya NO usa
-// Clerk/Pallets/Shipout como antes. Ojo: filtrarOrdenesDeHoy todavía oculta
-// la fila con el criterio viejo (Clerk + Pallets + Shipout), así que puede
-// quedar una fila oculta del filtro de "hoy" pero todavía roja (o visible
-// pero ya en azul/verde) si esos dos criterios no coinciden -- avísame si
-// quieres que el filtro también se cambie a PM para que vayan de la mano.
-// Las 3 reglas quedan visibles en Formato → Formato condicional como
+// de la orden -- ya NO distingue Loading/Unloading, solo si está atendida:
+//   - Rojo: todas las filas nuevas empiezan así (mientras PM no esté
+//           marcado).
+//   - Azul: en cuanto se marca el checkbox de PM (columna T).
+// Ojo: filtrarOrdenesDeHoy todavía oculta la fila con un criterio
+// distinto (Clerk + Pallets + Shipout llenos), así que puede quedar una
+// fila oculta del filtro de "hoy" pero todavía roja, o visible pero ya en
+// azul, si esos dos criterios no coinciden -- avísame si quieres que el
+// filtro también se cambie a PM para que vayan de la mano.
+// Las reglas quedan visibles en Formato → Formato condicional como
 // cualquier otra -- si quieres afinar el tono exacto de algún color, ábrelo
 // ahí y cámbialo, la lógica no se toca. runFormatOnNewRows_CheckIns_ estira
 // solo el rango de estas reglas según van llegando filas nuevas (no hace
@@ -751,23 +748,17 @@ function configurarColoresPorEstado() {
     .setRanges([rangoFilas])
     .build();
 
-  const reglaCargarAtendida = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($A2<>"", $T2=TRUE, $I2="Loading / Cargar")')
+  const reglaAtendida = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=AND($A2<>"", $T2=TRUE)')
     .setBackground("#4A86E8")
-    .setRanges([rangoFilas])
-    .build();
-
-  const reglaDescargarAtendida = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($A2<>"", $T2=TRUE, $I2="Unloading / Descargar")')
-    .setBackground("#D9EAD3")
     .setRanges([rangoFilas])
     .build();
 
   // setConditionalFormatRules REEMPLAZA todas las reglas -- así correr esto
   // de nuevo no va acumulando copias viejas.
-  hoja.setConditionalFormatRules([reglaNoAtendida, reglaCargarAtendida, reglaDescargarAtendida]);
+  hoja.setConditionalFormatRules([reglaNoAtendida, reglaAtendida]);
 
-  Logger.log("configurarColoresPorEstado: 3 reglas creadas -- rojo (no atendida), azul (Cargar atendida), verde (Descargar atendida).");
+  Logger.log("configurarColoresPorEstado: 2 reglas creadas -- rojo (no atendida), azul (PM marcado).");
 }
 
 // Convierte números de fila sueltos en bloques consecutivos, ej.
