@@ -740,13 +740,13 @@ function configurarColoresPorEstado() {
 
   const reglaNoAtendida = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=AND($A2<>"", OR($S2="", $Q2="", $R2=""))')
-    .setBackground("#F4CCCC")
+    .setBackground("#FF0000")
     .setRanges([rangoFilas])
     .build();
 
   const reglaCargarAtendida = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=AND($A2<>"", $S2<>"", $Q2<>"", $R2<>"", $I2="Loading / Cargar")')
-    .setBackground("#C9DAF8")
+    .setBackground("#4A86E8")
     .setRanges([rangoFilas])
     .build();
 
