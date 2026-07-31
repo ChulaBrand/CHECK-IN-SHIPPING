@@ -12,7 +12,9 @@ const nextConfig: NextConfig = {
   // HTML/CSS/JS estático y se puede hospedar en cualquier lado (GitHub
   // Pages, Netlify, etc.) sin Node corriendo detrás.
   output: "export",
-  basePath: isGithubPagesBuild ? "/CHECK-IN-SHIPPING" : undefined,
+  // Mismo valor que usa src/lib/asset.ts para las rutas manuales (logo, etc.)
+  // — así basePath y esas rutas nunca quedan desincronizados.
+  basePath: isGithubPagesBuild ? process.env.NEXT_PUBLIC_BASE_PATH : undefined,
 };
 
 export default nextConfig;

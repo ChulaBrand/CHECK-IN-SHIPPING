@@ -27,7 +27,10 @@ jobs:
       - run: npm run build
         env:
           GITHUB_PAGES: "true"
-          NEXT_PUBLIC_BASE_PATH: /CHECK-IN-SHIPPING
+          # /check-in en vez del nombre del repo: así queda bajo el mismo
+          # dominio que shipping-estatus (proxeado desde chulabrand-shipping.com/check-in
+          # vía un Cloudflare Worker), en vez de vivir en su propio subpath.
+          NEXT_PUBLIC_BASE_PATH: /check-in
           # Configúrala en: Settings → Secrets and variables → Actions →
           # pestaña Variables → New repository variable.
           NEXT_PUBLIC_APPS_SCRIPT_URL: ${{ vars.NEXT_PUBLIC_APPS_SCRIPT_URL }}
