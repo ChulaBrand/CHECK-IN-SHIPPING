@@ -77,17 +77,27 @@ function Field({
     case "name-split":
       return (
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Input
-            placeholder={ui.firstNamePlaceholder[locale]}
-            value={answers.firstName}
-            onChange={(e) => setAnswer("firstName", e.target.value)}
-            autoFocus
-          />
-          <Input
-            placeholder={ui.lastNamePlaceholder[locale]}
-            value={answers.lastName}
-            onChange={(e) => setAnswer("lastName", e.target.value)}
-          />
+          <div className="flex-1">
+            <Input
+              placeholder={ui.firstNamePlaceholder[locale]}
+              value={answers.firstName}
+              onChange={(e) => setAnswer("firstName", e.target.value)}
+              autoFocus
+            />
+            <p className="mt-1 text-xs text-neutral-400">
+              {ui.firstNamePlaceholder[locale]}
+            </p>
+          </div>
+          <div className="flex-1">
+            <Input
+              placeholder={ui.lastNamePlaceholder[locale]}
+              value={answers.lastName}
+              onChange={(e) => setAnswer("lastName", e.target.value)}
+            />
+            <p className="mt-1 text-xs text-neutral-400">
+              {ui.lastNamePlaceholder[locale]}
+            </p>
+          </div>
         </div>
       );
 
@@ -234,9 +244,9 @@ export function QuestionCard({
   // botones). Los de checkboxes (muchas opciones) se quedan con el alto
   // natural de siempre -- no llevan número fijo.
   const FIXED_TOTAL_HEIGHT: Partial<Record<typeof step.kind, number>> = {
-    "name-split": 200,
+    "name-split": 240,
     tel: 200,
-    text: 200,
+    text: 230,
     radio: 240,
   };
   const fixedHeight = FIXED_TOTAL_HEIGHT[step.kind];
