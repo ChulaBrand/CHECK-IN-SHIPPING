@@ -47,9 +47,10 @@
  *   configurarTriggerHoraSalida una vez, ver arriba).
  * - filtrarOrdenesDeHoy (cada minuto, una vez armado el trigger) oculta de
  *   la vista las órdenes que ya no son de hoy, Y las que ya están
- *   atendidas (Clerk + Pallets + Shipout llenos) -- exactamente el mismo
- *   criterio de "activas/inactivas" que usaba el sheet real. Es un filtro
- *   de vista: nunca borra ni mueve nada.
+ *   atendidas (Pallets o Shipout ya tienen algo -- cualquiera de las dos
+ *   sola basta) -- exactamente el mismo criterio de "activas/inactivas"
+ *   que usaba el sheet real. Es un filtro de vista: nunca borra ni mueve
+ *   nada.
  * - archivarOrdenesCompletadas (semanal, lunes ~4am, una vez armado el
  *   trigger) mueve a la pestaña "Base_de_Datos" las órdenes que ya están
  *   100% completas (Forklift, Door, Pallets, Shipout, Clerk y PM llenos) Y
@@ -339,19 +340,19 @@ function filtrarOrdenesDeHoy() {
 
   filtro.setColumnFilterCriteria(1, criterioFecha); // columna A = Date
 
-  // Activas/inactivas: oculta la fila solo si Clerk YA tiene algo Y la
-  // columna en cuestión (Pallets o Shipout) también -- si Clerk sigue
-  // vacío, la orden se queda visible sin importar lo demás.
+  // Activas/inactivas: la fila se oculta en cuanto Pallets O Shipout ya
+  // tienen algo (cualquiera de las dos sola basta, no hace falta que
+  // Clerk también esté lleno).
   filtro.setColumnFilterCriteria(
     CHECKIN_COL_PALLETS,
     SpreadsheetApp.newFilterCriteria()
-      .whenFormulaSatisfied('=OR($S2="", ISBLANK($Q2))')
+      .whenFormulaSatisfied('=ISBLANK($Q2)')
       .build()
   );
   filtro.setColumnFilterCriteria(
     CHECKIN_COL_SHIPOUT,
     SpreadsheetApp.newFilterCriteria()
-      .whenFormulaSatisfied('=OR($S2="", ISBLANK($R2))')
+      .whenFormulaSatisfied('=ISBLANK($R2)')
       .build()
   );
 }
