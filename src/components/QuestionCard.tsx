@@ -244,7 +244,6 @@ export function QuestionCard({
   // botones). Los de checkboxes (muchas opciones) se quedan con el alto
   // natural de siempre -- no llevan número fijo.
   const FIXED_TOTAL_HEIGHT: Partial<Record<typeof step.kind, number>> = {
-    "name-split": 240,
     tel: 200,
     text: 230,
     radio: 240,
