@@ -58,7 +58,7 @@ etc.) y no se toca ni se mezcla con este.
    [`google-apps-script/RecibirCheckInWeb.gs`](./google-apps-script/RecibirCheckInWeb.gs)
    de este repo.
 4. Del menú de funciones (arriba), corre ▶ **Ejecutar** una vez cada una de
-   estas 4 (en cualquier orden). La primera vez te va a pedir autorizar
+   estas 5 (en cualquier orden). La primera vez te va a pedir autorizar
    permisos (es tu propio script sobre tu propia hoja, es seguro aceptar).
    - **configurarEncabezados** -- crea la fila de encabezados.
      > Si ya habías corrido una versión anterior, vuelve a correrla --
@@ -67,10 +67,10 @@ etc.) y no se toca ni se mezcla con este.
      > Nunca borra filas de datos.
    - **configurarTriggerFiltro** -- la hoja se filtra sola cada minuto para
      mostrar nada más las órdenes **activas de hoy**: de la madrugada
-     12am-5am también se incluye lo de ayer, y en cuanto Clerk + Pallets +
-     Shipout ya están los tres llenos, esa orden se oculta de la vista (ya
-     quedó atendida). Es un filtro de vista: no borra ni mueve nada, todo
-     el histórico sigue ahí. Para refrescarlo a mano, corre
+     12am-5am también se incluye lo de ayer, y en cuanto Pallets o Shipout
+     ya tienen algo (cualquiera de las dos sola basta), esa orden se oculta
+     de la vista (ya quedó atendida). Es un filtro de vista: no borra ni
+     mueve nada, todo el histórico sigue ahí. Para refrescarlo a mano, corre
      **filtrarOrdenesDeHoy** directamente.
    - **configurarTriggerHoraSalida** -- activa que, al marcar el checkbox
      de la columna **Depa**, la columna **Hora de Salida** se llene sola
@@ -82,6 +82,11 @@ etc.) y no se toca ni se mezcla con este.
      y con más de 2 días -- copia primero, verifica, y solo entonces borra
      de "Check-Ins". Así la hoja principal no crece para siempre con
      órdenes ya cerradas.
+   - **configurarTriggerArchivadoDiario** -- activa la limpieza diaria
+     (~5am) que mueve a "Base_de_Datos" **TODAS** las órdenes que haya en
+     "Check-Ins" en ese momento -- completas o no -- y las borra de
+     "Check-Ins", que amanece vacía cada día. Mismo patrón de seguridad:
+     copia primero, verifica, y solo entonces borra.
 5. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**

@@ -13,13 +13,16 @@
  * 2. Menú **Extensiones → Apps Script**.
  * 3. Borra lo que haya en `Code.gs` y pega este archivo completo.
  * 4. Del menú de funciones (arriba), corre ▶ **Ejecutar** una vez cada una
- *    de estas 4 (en cualquier orden), autorizando permisos la primera vez:
+ *    de estas 5 (en cualquier orden), autorizando permisos la primera vez:
  *      - **configurarEncabezados**       -- crea la fila de encabezados.
  *      - **configurarTriggerFiltro**     -- filtra la vista a "solo hoy".
  *      - **configurarTriggerHoraSalida** -- Depa marcado -> Hora de Salida
  *        automática.
  *      - **configurarTriggerArchivado**  -- archivado semanal de órdenes
  *        completadas y viejas (ver abajo).
+ *      - **configurarTriggerArchivadoDiario** -- mueve TODO a
+ *        "Base_de_Datos" y deja "Check-Ins" vacía cada día ~5am (ver
+ *        abajo).
  *    > Si ya habías corrido una versión anterior de este archivo, vuelve a
  *    > correr `configurarEncabezados` -- los encabezados cambiaron para
  *    > parecerse más al sheet real. No borra ninguna fila de datos.
@@ -57,6 +60,10 @@
  *   tienen más de 2 días -- copia primero, verifica, y solo entonces borra
  *   el original. Así "Check-Ins" no crece para siempre con órdenes ya
  *   cerradas.
+ * - archivarTodoDiario (diario ~5am, una vez armado el trigger) mueve
+ *   TODAS las filas a "Base_de_Datos" -- completas o no -- y las borra de
+ *   "Check-Ins", que amanece vacía cada día. Mismo patrón de seguridad:
+ *   copia primero, verifica, y solo entonces borra.
  * - runFormatOnNewRows_CheckIns_ corre sola después de cada envío del
  *   formulario (no hay que configurar nada): si le falta el formato o los
  *   menús desplegables/checkboxes de Forklift/Door/Pallets/Shipout a una
@@ -496,6 +503,88 @@ function configurarTriggerArchivado() {
     .create();
 
   Logger.log("Trigger semanal configurado: archivarOrdenesCompletadas cada lunes ~4am.");
+}
+
+// Mantenimiento DIARIO: todos los días ~5am (una vez armado el trigger)
+// mueve TODAS las filas de "Check-Ins" a "Base_de_Datos" -- sin importar si
+// están completas o no -- y las borra de "Check-Ins", que amanece vacía
+// (solo encabezados) cada día. Copia primero, verifica que el número de
+// filas copiadas cuadre, y solo entonces borra el original (si algo no
+// cuadra, no borra nada). Encaja con la ventana de madrugada de
+// filtrarOrdenesDeHoy (12am-5am también muestra lo de ayer): a las 5am en
+// punto ya no hace falta esa ventana, porque "Check-Ins" acaba de quedar
+// en blanco.
+function archivarTodoDiario() {
+  const lock = LockService.getScriptLock();
+  const tieneLock = lock.tryLock(30000);
+  if (!tieneLock) return;
+
+  try {
+    const origen = checkinGetSheet_();
+    const numCols = CHECKIN_HEADERS.length;
+
+    const ultimaFila = origen.getLastRow();
+    if (ultimaFila < 2) {
+      Logger.log("archivarTodoDiario: no hay filas de datos que mover.");
+      return;
+    }
+
+    const numRows = ultimaFila - 2 + 1;
+    const datos = origen.getRange(2, 1, numRows, numCols).getValues();
+
+    const destino = checkinGetArchiveSheet_();
+    const destinoFilaAntes = destino.getLastRow();
+
+    let copiaExitosa = false;
+    try {
+      destino.getRange(destinoFilaAntes + 1, 1, numRows, numCols).setValues(datos);
+      SpreadsheetApp.flush();
+      const filasNuevasReales = destino.getLastRow() - destinoFilaAntes;
+      if (filasNuevasReales === numRows) {
+        copiaExitosa = true;
+      } else {
+        Logger.log("archivarTodoDiario: ABORTADO, se esperaban " + numRows + " filas nuevas en \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\" pero se detectaron " + filasNuevasReales + ". NO se borró nada de \"" + CHECKIN_SHEET_NAME + "\" por seguridad.");
+      }
+    } catch (error) {
+      Logger.log("archivarTodoDiario: ERROR al copiar a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\": " + error + ". NO se borró nada de \"" + CHECKIN_SHEET_NAME + "\" por seguridad.");
+    }
+
+    if (!copiaExitosa) return;
+
+    // Quitar el filtro antes de borrar (deleteRows puede fallar o
+    // comportarse mal con un filtro puesto). Se vuelve a crear solo en la
+    // siguiente corrida de filtrarOrdenesDeHoy.
+    if (origen.getFilter()) {
+      origen.getFilter().remove();
+    }
+
+    // Todo el rango es un solo bloque contiguo (fila 2 a la última) --
+    // no hace falta checkinToContiguousBlocks_ aquí, se borra de un golpe.
+    origen.deleteRows(2, numRows);
+
+    Logger.log("archivarTodoDiario: " + numRows + " fila(s) movidas a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\" y borradas de \"" + CHECKIN_SHEET_NAME + "\".");
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Corre esta función UNA sola vez para que archivarTodoDiario se ejecute
+// sola todos los días ~5am.
+function configurarTriggerArchivadoDiario() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function (t) {
+    if (t.getHandlerFunction() === "archivarTodoDiario") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  ScriptApp.newTrigger("archivarTodoDiario")
+    .timeBased()
+    .everyDays(1)
+    .atHour(5)
+    .create();
+
+  Logger.log("Trigger diario configurado: archivarTodoDiario todos los días ~5am.");
 }
 
 // Herramienta MANUAL (sin trigger): copia TODO lo que hay ahora mismo en
