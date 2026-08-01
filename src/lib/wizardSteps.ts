@@ -128,6 +128,10 @@ export const LOADING_BRANCH_STEPS: StepConfig[] = [
   {
     id: "spNumberOrder2",
     title: { en: "SP # / Order #", es: "SP # / Order #" },
+    subtitle: {
+      en: "Only 6-digit numbers. If there is more than one order, separate them with a slash (/)",
+      es: "Solo números de 6 dígitos. Si hay más de una orden, sepáralas con diagonal (/)",
+    },
     kind: "text",
     answerKey: "spNumberOrder2",
     validate: fieldError("spNumberOrder2"),
