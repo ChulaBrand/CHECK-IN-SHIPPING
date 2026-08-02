@@ -96,7 +96,7 @@ etc.) y no se toca ni se mezcla con este.
 **Herramientas manuales** (opcionales, sin trigger -- las corres tú cuando
 quieras desde el menú de funciones): **respaldarTodoABaseDeDatos** copia
 TODO lo que haya en ese momento en "Check-Ins" a "Base_de_Datos", completo o
-no; **limpiarCheckInsDejando48Horas** borra de "Check-Ins" lo de más de 48h,
+no; **limpiarCheckInsDejando24Horas** borra de "Check-Ins" lo de más de 24h,
 pero se niega a correr si no acabas de respaldar primero (por seguridad).
 
 **Si un archivado se queda a medias** (copió filas a "Base_de_Datos" pero no

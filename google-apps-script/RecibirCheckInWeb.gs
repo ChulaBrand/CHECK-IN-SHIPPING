@@ -79,8 +79,8 @@
  * - respaldarTodoABaseDeDatos: copia TODO lo que hay ahora mismo en
  *   "Check-Ins" a "Base_de_Datos", sin importar si está completo o no. Útil
  *   como respaldo general antes de una limpieza grande.
- * - limpiarCheckInsDejando48Horas: borra de "Check-Ins" todo lo de más de
- *   48 horas. Por seguridad, solo funciona si acabas de correr
+ * - limpiarCheckInsDejando24Horas: borra de "Check-Ins" todo lo de más de
+ *   24 horas. Por seguridad, solo funciona si acabas de correr
  *   respaldarTodoABaseDeDatos con éxito (si no, te avisa y no borra nada).
  * - repararCheckInsDuplicadosEnBaseDeDatos: corre esta SOLO si una corrida
  *   de archivado (archivarTodoDiario o archivarOrdenesCompletadas) copió
@@ -113,7 +113,7 @@ const CHECKIN_COL_LOAD_ACOMODATION = 22; // V
 
 const CHECKIN_DIAS_MINIMOS_PARA_ARCHIVAR = 2; // archivado semanal: no toca lo de los últimos 2 días
 const CHECKIN_MAX_FILAS_POR_CORRIDA = 4000; // tope de seguridad por ejecución
-const CHECKIN_HORAS_A_CONSERVAR = 48; // limpiarCheckInsDejando48Horas: cuánto se deja
+const CHECKIN_HORAS_A_CONSERVAR = 24; // limpiarCheckInsDejando24Horas: cuánto se deja
 const CHECKIN_PROP_COPIA_COMPLETA = "checkinCopiaBaseDeDatosCompleta"; // marca de seguridad entre respaldar y limpiar
 
 const CHECKIN_HEADERS = [
@@ -605,7 +605,7 @@ function configurarTriggerArchivadoDiario() {
 // Herramienta MANUAL (sin trigger): copia TODO lo que hay ahora mismo en
 // "Check-Ins" a "Base_de_Datos", sin filtrar por completo/incompleto ni por
 // fecha. Útil como respaldo general antes de una limpieza grande. Marca una
-// propiedad de confirmación que limpiarCheckInsDejando48Horas exige antes
+// propiedad de confirmación que limpiarCheckInsDejando24Horas exige antes
 // de borrar nada, para nunca borrar sin haber respaldado primero.
 function respaldarTodoABaseDeDatos() {
   const lock = LockService.getScriptLock();
@@ -635,7 +635,7 @@ function respaldarTodoABaseDeDatos() {
 
     const filasNuevasReales = destino.getLastRow() - destinoFilaAntes;
     if (filasNuevasReales !== numRows) {
-      Logger.log("respaldarTodoABaseDeDatos: ADVERTENCIA, se esperaban " + numRows + " filas nuevas pero se detectaron " + filasNuevasReales + ". NO se marcó la copia como completa -- revisa antes de correr limpiarCheckInsDejando48Horas.");
+      Logger.log("respaldarTodoABaseDeDatos: ADVERTENCIA, se esperaban " + numRows + " filas nuevas pero se detectaron " + filasNuevasReales + ". NO se marcó la copia como completa -- revisa antes de correr limpiarCheckInsDejando24Horas.");
       return;
     }
 
@@ -644,7 +644,7 @@ function respaldarTodoABaseDeDatos() {
       JSON.stringify({ fecha: new Date().toISOString(), filasCopiadas: numRows })
     );
 
-    Logger.log("respaldarTodoABaseDeDatos: ÉXITO, " + numRows + " fila(s) copiadas a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\". Ya puedes correr limpiarCheckInsDejando48Horas() con confianza.");
+    Logger.log("respaldarTodoABaseDeDatos: ÉXITO, " + numRows + " fila(s) copiadas a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\". Ya puedes correr limpiarCheckInsDejando24Horas() con confianza.");
   } finally {
     lock.releaseLock();
   }
@@ -654,13 +654,13 @@ function respaldarTodoABaseDeDatos() {
 // CHECKIN_HORAS_A_CONSERVAR horas. Por seguridad, solo funciona si acabas de
 // correr respaldarTodoABaseDeDatos() con éxito -- si no, avisa y no borra
 // nada.
-function limpiarCheckInsDejando48Horas() {
+function limpiarCheckInsDejando24Horas() {
   const marca = PropertiesService.getScriptProperties().getProperty(CHECKIN_PROP_COPIA_COMPLETA);
   if (!marca) {
-    Logger.log("limpiarCheckInsDejando48Horas: ABORTADO. No se encontró confirmación de que respaldarTodoABaseDeDatos haya corrido exitosamente. Corre primero esa función.");
+    Logger.log("limpiarCheckInsDejando24Horas: ABORTADO. No se encontró confirmación de que respaldarTodoABaseDeDatos haya corrido exitosamente. Corre primero esa función.");
     return;
   }
-  Logger.log("limpiarCheckInsDejando48Horas: confirmación de respaldo encontrada -> " + marca);
+  Logger.log("limpiarCheckInsDejando24Horas: confirmación de respaldo encontrada -> " + marca);
 
   const lock = LockService.getScriptLock();
   const tieneLock = lock.tryLock(30000);
@@ -685,7 +685,7 @@ function limpiarCheckInsDejando48Horas() {
     });
 
     if (filasParaBorrar.length === 0) {
-      Logger.log("limpiarCheckInsDejando48Horas: no hay filas de más de " + CHECKIN_HORAS_A_CONSERVAR + "h para borrar.");
+      Logger.log("limpiarCheckInsDejando24Horas: no hay filas de más de " + CHECKIN_HORAS_A_CONSERVAR + "h para borrar.");
       return;
     }
 
@@ -700,7 +700,7 @@ function limpiarCheckInsDejando48Horas() {
       hoja.deleteRows(b.start, b.end - b.start + 1);
     });
 
-    Logger.log("limpiarCheckInsDejando48Horas: " + loteActual.length + " fila(s) borradas de \"" + CHECKIN_SHEET_NAME + "\". Quedaron solo las de las últimas " + CHECKIN_HORAS_A_CONSERVAR + "h.");
+    Logger.log("limpiarCheckInsDejando24Horas: " + loteActual.length + " fila(s) borradas de \"" + CHECKIN_SHEET_NAME + "\". Quedaron solo las de las últimas " + CHECKIN_HORAS_A_CONSERVAR + "h.");
   } finally {
     lock.releaseLock();
   }
