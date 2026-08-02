@@ -110,6 +110,14 @@ hasta entonces borra de "Check-Ins". Empieza desde arriba y se detiene en la
 primera fila sin match (así nunca toca check-ins reales que todavía no se
 han archivado, aunque estén mezclados).
 
+**Si repararCheckInsDuplicadosEnBaseDeDatos dice que no encontró nada** pero
+a simple vista sí ves filas iguales en las dos pestañas: corre
+**diagnosticarComparacionCheckInsBaseDeDatos** (de solo lectura, no borra ni
+cambia nada). Busca un par que coincida por Nombre+Apellido+Placas y
+registra en el log, columna por columna, el tipo y valor exacto de cada
+lado -- así se ve exactamente en cuál columna y por qué difieren, en vez de
+adivinar.
+
 **Formato de filas nuevas:** cada envío del formulario también corre sola
 una función que copia el formato/validación de la fila 2 (tu "plantilla") a
 la fila nueva si le falta (por ejemplo, si configuraste un menú desplegable

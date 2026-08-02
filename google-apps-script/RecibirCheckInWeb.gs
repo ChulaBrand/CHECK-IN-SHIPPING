@@ -91,6 +91,12 @@
  *   (Forklift/Door/Pallets/PM/etc.) en "Check-Ins" mientras la fila
  *   esperaba a borrarse, primero refresca esa fila en "Base_de_Datos" con
  *   lo más reciente, y hasta entonces borra de "Check-Ins".
+ * - diagnosticarComparacionCheckInsBaseDeDatos: de solo lectura, no borra
+ *   ni cambia nada. Úsala si repararCheckInsDuplicadosEnBaseDeDatos dice
+ *   que no encontró nada aunque a simple vista se vean filas iguales en
+ *   las dos pestañas -- busca un par que coincida por Nombre+Apellido+
+ *   Placas y registra en el log, columna por columna, el tipo y valor
+ *   exacto de cada lado, para ver exactamente en cuál difieren.
  */
 
 const CHECKIN_SHEET_NAME = "Check-Ins";
@@ -751,17 +757,38 @@ function repararCheckInsDuplicadosEnBaseDeDatos() {
     const datosOrigen = origen.getRange(2, 1, ultimaFilaOrigen - 1, numCols).getValues();
     const datosDestino = destino.getRange(2, 1, ultimaFilaDestino - 1, numCols).getValues();
 
+    // La columna B (Time) la escribe doPost como TEXTO "hh:mm a", pero si
+    // la columna destino no tiene formato de texto plano, Sheets la
+    // auto-convierte a un valor de hora real al copiarla (setValues()
+    // re-interpreta strings que "parecen" fecha/hora, igual que si los
+    // tecleraras a mano en la hoja) -- así que la misma orden puede verse
+    // como texto en un lado y como Date en el otro. Comparar el texto
+    // reformateado es fràgil (ceros a la izquierda, espacios, mayúsculas),
+    // así que en vez de eso esto la reduce a minutos-desde-medianoche en
+    // ambos casos -- un número, no depende de formato.
+    function minutosDelDia_(v) {
+      if (v instanceof Date) return v.getHours() * 60 + v.getMinutes();
+      const m = /^(\d{1,2}):(\d{2})\s*([AP])M?$/i.exec(String(v).trim());
+      if (!m) return null;
+      let h = parseInt(m[1], 10) % 12;
+      if (m[3].toUpperCase() === "P") h += 12;
+      return h * 60 + parseInt(m[2], 10);
+    }
+
     // Firma = las primeras `hastaCol` columnas de la fila concatenadas en
     // un solo texto, separadas por un caracter de control (\u0001) que
-    // nunca va a aparecer en datos reales -- si se unieran sin separador,
-    // dos filas distintas podrían "verse" igual por accidente (ej.
-    // ["12", "3"] y ["1", "23"] concatenan igual sin separador). Las
-    // fechas se pasan a milisegundos antes, para que comparen igual aunque
-    // sean dos objetos Date distintos con el mismo instante.
+    // nunca va a aparecer en datos reales. Normaliza cada valor ANTES de
+    // unir: la columna B (Time, índice 1) se reduce a minutos-del-día (ver
+    // minutosDelDia_ arriba); las demás columnas Date (la A, que siempre es
+    // un Date real de verdad en los dos lados) se reducen a milisegundos.
     function firma_(fila, hastaCol) {
       return fila
         .slice(0, hastaCol)
-        .map(function (v) {
+        .map(function (v, idx) {
+          if (idx === 1) {
+            const min = minutosDelDia_(v);
+            return min === null ? v : "min:" + min;
+          }
           return v instanceof Date ? v.getTime() : v;
         })
         .join("\u0001");
@@ -832,6 +859,65 @@ function repararCheckInsDuplicadosEnBaseDeDatos() {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Herramienta de DIAGNÓSTICO (sin trigger, NO modifica nada): busca en
+// "Check-Ins" y "Base_de_Datos" un par de filas que un humano reconocería
+// como la misma orden (mismo Nombre + Apellido + Placas) y registra en el
+// log, columna por columna (A:L), el TIPO de dato y el valor exacto de cada
+// lado. Úsala si repararCheckInsDuplicadosEnBaseDeDatos sigue sin encontrar
+// nada aunque a simple vista se vean iguales -- el log dice exactamente en
+// cuál columna y por qué difieren (tipo de dato, formato, o el valor de
+// verdad), sin necesidad de adivinar desde una captura de pantalla.
+function diagnosticarComparacionCheckInsBaseDeDatos() {
+  const origen = checkinGetSheet_();
+  const destino = checkinGetArchiveSheet_();
+  const numColsIdentidad = 12;
+
+  const ultimaFilaOrigen = origen.getLastRow();
+  const ultimaFilaDestino = destino.getLastRow();
+  if (ultimaFilaOrigen < 2 || ultimaFilaDestino < 2) {
+    Logger.log("diagnosticarComparacionCheckInsBaseDeDatos: alguna de las dos hojas no tiene filas de datos que comparar.");
+    return;
+  }
+
+  const datosOrigen = origen.getRange(2, 1, ultimaFilaOrigen - 1, numColsIdentidad).getValues();
+  const datosDestino = destino.getRange(2, 1, ultimaFilaDestino - 1, numColsIdentidad).getValues();
+
+  function textoSuelto_(v) {
+    return v instanceof Date ? String(v.getTime()) : String(v);
+  }
+
+  for (let i = 0; i < datosOrigen.length; i++) {
+    const fo = datosOrigen[i];
+    let filaMatch = null;
+    for (let k = 0; k < datosDestino.length; k++) {
+      const fd = datosDestino[k];
+      // Nombre (C=2) + Apellido (D=3) + Placas (F=5) -- lo que un humano
+      // usaría para reconocer "es la misma orden" a simple vista.
+      if (textoSuelto_(fd[2]) === textoSuelto_(fo[2]) && textoSuelto_(fd[3]) === textoSuelto_(fo[3]) && textoSuelto_(fd[5]) === textoSuelto_(fo[5])) {
+        filaMatch = fd;
+        break;
+      }
+    }
+    if (filaMatch) {
+      Logger.log("=== Comparando Check-Ins fila " + (2 + i) + ' contra su match en "' + CHECKIN_ARCHIVE_SHEET_NAME + '" por Nombre+Apellido+Placas ===');
+      for (let c = 0; c < numColsIdentidad; c++) {
+        const letraCol = String.fromCharCode(65 + c);
+        const vo = fo[c];
+        const vd = filaMatch[c];
+        const tipoOrigen = vo instanceof Date ? "Date" : typeof vo;
+        const tipoDestino = vd instanceof Date ? "Date" : typeof vd;
+        const igual = tipoOrigen === tipoDestino && textoSuelto_(vo) === textoSuelto_(vd);
+        Logger.log(
+          letraCol + " (" + CHECKIN_HEADERS[c] + "): Check-Ins=[" + tipoOrigen + '] "' + vo + '"   Base_de_Datos=[' + tipoDestino + '] "' + vd + '"   ' + (igual ? "OK, coinciden" : "*** DIFERENTE ***")
+        );
+      }
+      return; // un solo par ya alcanza para diagnosticar
+    }
+  }
+
+  Logger.log("diagnosticarComparacionCheckInsBaseDeDatos: no encontré ningún par por Nombre+Apellido+Placas para comparar.");
 }
 
 // Config de runFormatOnNewRows_CheckIns_: qué columnas revisar, y de dónde
