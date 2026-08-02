@@ -99,6 +99,14 @@ TODO lo que haya en ese momento en "Check-Ins" a "Base_de_Datos", completo o
 no; **limpiarCheckInsDejando48Horas** borra de "Check-Ins" lo de más de 48h,
 pero se niega a correr si no acabas de respaldar primero (por seguridad).
 
+**Si un archivado se queda a medias** (copió filas a "Base_de_Datos" pero no
+alcanzó a borrarlas de "Check-Ins" -- revisa las Ejecuciones para
+confirmarlo): corre **repararCheckInsDuplicadosEnBaseDeDatos**. Nunca borra
+por fecha ni por conteo -- solo borra una fila de "Check-Ins" si encuentra en
+"Base_de_Datos" otra fila idéntica en sus 22 columnas, empezando desde arriba
+y deteniéndose en la primera que no coincida (así nunca toca check-ins
+reales que todavía no se han archivado, aunque estén mezclados).
+
 **Formato de filas nuevas:** cada envío del formulario también corre sola
 una función que copia el formato/validación de la fila 2 (tu "plantilla") a
 la fila nueva si le falta (por ejemplo, si configuraste un menú desplegable

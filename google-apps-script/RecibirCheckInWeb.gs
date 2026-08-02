@@ -82,6 +82,12 @@
  * - limpiarCheckInsDejando48Horas: borra de "Check-Ins" todo lo de más de
  *   48 horas. Por seguridad, solo funciona si acabas de correr
  *   respaldarTodoABaseDeDatos con éxito (si no, te avisa y no borra nada).
+ * - repararCheckInsDuplicadosEnBaseDeDatos: corre esta SOLO si una corrida
+ *   de archivado (archivarTodoDiario o archivarOrdenesCompletadas) copió
+ *   filas a "Base_de_Datos" pero un error a mitad de camino impidió que las
+ *   borrara de "Check-Ins" -- revisa las Ejecuciones para confirmarlo.
+ *   Nunca borra por fecha ni por conteo: solo borra una fila de "Check-Ins"
+ *   si encuentra en "Base_de_Datos" otra fila idéntica en sus 22 columnas.
  */
 
 const CHECKIN_SHEET_NAME = "Check-Ins";
@@ -686,6 +692,91 @@ function limpiarCheckInsDejando48Horas() {
     });
 
     Logger.log("limpiarCheckInsDejando48Horas: " + loteActual.length + " fila(s) borradas de \"" + CHECKIN_SHEET_NAME + "\". Quedaron solo las de las últimas " + CHECKIN_HORAS_A_CONSERVAR + "h.");
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Herramienta MANUAL de reparación (sin trigger): úsala si una corrida de
+// archivarTodoDiario (o archivarOrdenesCompletadas) alcanzó a copiar filas a
+// "Base_de_Datos" pero un error a mitad de camino impidió que las borrara de
+// "Check-Ins" -- revisa las Ejecuciones del proyecto para confirmar que fue
+// eso. Es segura por diseño: NUNCA borra por fecha ni por conteo, solo borra
+// una fila de "Check-Ins" si encuentra en "Base_de_Datos" otra fila con
+// EXACTAMENTE el mismo contenido en las 22 columnas. Compara desde la fila 2
+// hacia abajo y se detiene en la primera fila que no tenga copia idéntica
+// (de ahí para abajo se queda todo intacto -- son check-ins reales que
+// todavía no se han archivado). Dejas ver en el log, antes de borrar,
+// cuántas filas encontró duplicadas.
+function repararCheckInsDuplicadosEnBaseDeDatos() {
+  const lock = LockService.getScriptLock();
+  const tieneLock = lock.tryLock(30000);
+  if (!tieneLock) {
+    Logger.log("repararCheckInsDuplicadosEnBaseDeDatos: no se pudo obtener el lock, intenta de nuevo en un momento.");
+    return;
+  }
+
+  try {
+    const origen = checkinGetSheet_();
+    const numCols = CHECKIN_HEADERS.length;
+    const ultimaFilaOrigen = origen.getLastRow();
+    if (ultimaFilaOrigen < 2) {
+      Logger.log('repararCheckInsDuplicadosEnBaseDeDatos: "' + CHECKIN_SHEET_NAME + '" no tiene filas de datos, nada que reparar.');
+      return;
+    }
+
+    const destino = checkinGetArchiveSheet_();
+    const ultimaFilaDestino = destino.getLastRow();
+    if (ultimaFilaDestino < 2) {
+      Logger.log('repararCheckInsDuplicadosEnBaseDeDatos: "' + CHECKIN_ARCHIVE_SHEET_NAME + '" está vacía, no hay nada contra qué comparar. No se borró nada.');
+      return;
+    }
+
+    const datosOrigen = origen.getRange(2, 1, ultimaFilaOrigen - 1, numCols).getValues();
+    const datosDestino = destino.getRange(2, 1, ultimaFilaDestino - 1, numCols).getValues();
+
+    // Firma = todas las columnas de la fila concatenadas en un solo texto
+    // (las fechas se pasan a milisegundos antes, para que comparen igual
+    // aunque sean dos objetos Date distintos con el mismo instante).
+    function firma_(fila) {
+      return fila
+        .map(function (v) {
+          return v instanceof Date ? v.getTime() : v;
+        })
+        .join("");
+    }
+
+    const firmasDestino = {};
+    datosDestino.forEach(function (fila) {
+      firmasDestino[firma_(fila)] = true;
+    });
+
+    let filasDuplicadas = 0;
+    for (let i = 0; i < datosOrigen.length; i++) {
+      if (firmasDestino[firma_(datosOrigen[i])]) {
+        filasDuplicadas++;
+      } else {
+        break; // primera fila sin copia idéntica -- de aquí para abajo no se toca nada
+      }
+    }
+
+    if (filasDuplicadas === 0) {
+      Logger.log('repararCheckInsDuplicadosEnBaseDeDatos: ninguna fila al principio de "' + CHECKIN_SHEET_NAME + '" tiene copia idéntica en "' + CHECKIN_ARCHIVE_SHEET_NAME + '". No se borró nada.');
+      return;
+    }
+
+    Logger.log(
+      "repararCheckInsDuplicadosEnBaseDeDatos: " + filasDuplicadas + ' fila(s) al principio de "' + CHECKIN_SHEET_NAME +
+      '" (filas 2 a ' + (filasDuplicadas + 1) + ') ya están idénticas en "' + CHECKIN_ARCHIVE_SHEET_NAME +
+      '" -- se van a borrar de "' + CHECKIN_SHEET_NAME + '". Quedan ' + (datosOrigen.length - filasDuplicadas) + " fila(s) sin tocar (no tenían copia idéntica)."
+    );
+
+    if (origen.getFilter()) {
+      origen.getFilter().remove();
+    }
+    origen.deleteRows(2, filasDuplicadas);
+
+    Logger.log("repararCheckInsDuplicadosEnBaseDeDatos: listo, se borraron " + filasDuplicadas + " fila(s) duplicada(s) de \"" + CHECKIN_SHEET_NAME + "\".");
   } finally {
     lock.releaseLock();
   }
