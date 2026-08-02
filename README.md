@@ -101,11 +101,14 @@ pero se niega a correr si no acabas de respaldar primero (por seguridad).
 
 **Si un archivado se queda a medias** (copió filas a "Base_de_Datos" pero no
 alcanzó a borrarlas de "Check-Ins" -- revisa las Ejecuciones para
-confirmarlo): corre **repararCheckInsDuplicadosEnBaseDeDatos**. Nunca borra
-por fecha ni por conteo -- solo borra una fila de "Check-Ins" si encuentra en
-"Base_de_Datos" otra fila idéntica en sus 22 columnas, empezando desde arriba
-y deteniéndose en la primera que no coincida (así nunca toca check-ins
-reales que todavía no se han archivado, aunque estén mezclados).
+confirmarlo): corre **repararCheckInsDuplicadosEnBaseDeDatos**. Identifica
+"es la misma orden" solo por las columnas A:L (lo que llena el chofer, nunca
+cambia después) -- si el personal ya avanzó Forklift/Door/Pallets/PM/etc. en
+"Check-Ins" mientras la fila esperaba a borrarse, primero refresca esa fila
+en "Base_de_Datos" con lo más reciente (así nunca se pierde ese trabajo) y
+hasta entonces borra de "Check-Ins". Empieza desde arriba y se detiene en la
+primera fila sin match (así nunca toca check-ins reales que todavía no se
+han archivado, aunque estén mezclados).
 
 **Formato de filas nuevas:** cada envío del formulario también corre sola
 una función que copia el formato/validación de la fila 2 (tu "plantilla") a

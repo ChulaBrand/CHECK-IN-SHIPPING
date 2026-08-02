@@ -86,8 +86,11 @@
  *   de archivado (archivarTodoDiario o archivarOrdenesCompletadas) copió
  *   filas a "Base_de_Datos" pero un error a mitad de camino impidió que las
  *   borrara de "Check-Ins" -- revisa las Ejecuciones para confirmarlo.
- *   Nunca borra por fecha ni por conteo: solo borra una fila de "Check-Ins"
- *   si encuentra en "Base_de_Datos" otra fila idéntica en sus 22 columnas.
+ *   Identifica "es la misma orden" solo por las columnas A:L (lo que llena
+ *   el chofer, nunca cambia después) -- si el personal ya avanzó M:V
+ *   (Forklift/Door/Pallets/PM/etc.) en "Check-Ins" mientras la fila
+ *   esperaba a borrarse, primero refresca esa fila en "Base_de_Datos" con
+ *   lo más reciente, y hasta entonces borra de "Check-Ins".
  */
 
 const CHECKIN_SHEET_NAME = "Check-Ins";
@@ -701,13 +704,25 @@ function limpiarCheckInsDejando48Horas() {
 // archivarTodoDiario (o archivarOrdenesCompletadas) alcanzó a copiar filas a
 // "Base_de_Datos" pero un error a mitad de camino impidió que las borrara de
 // "Check-Ins" -- revisa las Ejecuciones del proyecto para confirmar que fue
-// eso. Es segura por diseño: NUNCA borra por fecha ni por conteo, solo borra
-// una fila de "Check-Ins" si encuentra en "Base_de_Datos" otra fila con
-// EXACTAMENTE el mismo contenido en las 22 columnas. Compara desde la fila 2
-// hacia abajo y se detiene en la primera fila que no tenga copia idéntica
-// (de ahí para abajo se queda todo intacto -- son check-ins reales que
-// todavía no se han archivado). Dejas ver en el log, antes de borrar,
-// cuántas filas encontró duplicadas.
+// eso.
+//
+// Identifica "es la misma orden" comparando SOLO las columnas A:L -- lo que
+// llena el chofer al enviar el formulario, igual que el rango que escribe
+// doPost de un jalón, y que ya nunca se vuelve a tocar. A propósito NO
+// compara M:V (Forklift, Door, Pallets, Clerk, PM, Comentarios, Acomodo):
+// esas las sigue llenando el personal directo en "Check-Ins" mientras la
+// fila espera a borrarse, así que casi siempre van a estar más avanzadas
+// ahí que en la copia vieja de "Base_de_Datos" -- comparar la fila COMPLETA
+// (como hacía la primera versión de esta función) casi nunca encuentra
+// coincidencia por eso, y la fila se queda atorada para siempre.
+//
+// Antes de borrar de "Check-Ins", si M:V ya no coincide con lo que quedó en
+// "Base_de_Datos", ACTUALIZA esa fila en "Base_de_Datos" con el contenido
+// más reciente de "Check-Ins" (y lo verifica) -- así nunca se pierde
+// trabajo del personal por quedarse solo con la copia vieja. Compara desde
+// la fila 2 hacia abajo y se detiene en la primera fila sin match en A:L
+// (de ahí para abajo son check-ins reales que todavía no se han
+// archivado).
 function repararCheckInsDuplicadosEnBaseDeDatos() {
   const lock = LockService.getScriptLock();
   const tieneLock = lock.tryLock(30000);
@@ -719,6 +734,7 @@ function repararCheckInsDuplicadosEnBaseDeDatos() {
   try {
     const origen = checkinGetSheet_();
     const numCols = CHECKIN_HEADERS.length;
+    const numColsIdentidad = 12; // A:L -- lo único que llena el chofer y nunca cambia después
     const ultimaFilaOrigen = origen.getLastRow();
     if (ultimaFilaOrigen < 2) {
       Logger.log('repararCheckInsDuplicadosEnBaseDeDatos: "' + CHECKIN_SHEET_NAME + '" no tiene filas de datos, nada que reparar.');
@@ -735,40 +751,76 @@ function repararCheckInsDuplicadosEnBaseDeDatos() {
     const datosOrigen = origen.getRange(2, 1, ultimaFilaOrigen - 1, numCols).getValues();
     const datosDestino = destino.getRange(2, 1, ultimaFilaDestino - 1, numCols).getValues();
 
-    // Firma = todas las columnas de la fila concatenadas en un solo texto
-    // (las fechas se pasan a milisegundos antes, para que comparen igual
-    // aunque sean dos objetos Date distintos con el mismo instante).
-    function firma_(fila) {
+    // Firma = las primeras `hastaCol` columnas de la fila concatenadas en
+    // un solo texto, separadas por un caracter de control (\u0001) que
+    // nunca va a aparecer en datos reales -- si se unieran sin separador,
+    // dos filas distintas podrían "verse" igual por accidente (ej.
+    // ["12", "3"] y ["1", "23"] concatenan igual sin separador). Las
+    // fechas se pasan a milisegundos antes, para que comparen igual aunque
+    // sean dos objetos Date distintos con el mismo instante.
+    function firma_(fila, hastaCol) {
       return fila
+        .slice(0, hastaCol)
         .map(function (v) {
           return v instanceof Date ? v.getTime() : v;
         })
-        .join("");
+        .join("\u0001");
     }
 
-    const firmasDestino = {};
-    datosDestino.forEach(function (fila) {
-      firmasDestino[firma_(fila)] = true;
+    // Identidad (A:L) -> número de fila real en Base_de_Datos. Si dos
+    // filas comparten identidad (un archivado fallido corrido más de una
+    // vez), se queda con la última -- es la copia más reciente.
+    const filaDestinoPorIdentidad = {};
+    datosDestino.forEach(function (fila, i) {
+      filaDestinoPorIdentidad[firma_(fila, numColsIdentidad)] = 2 + i;
     });
 
     let filasDuplicadas = 0;
+    let filasActualizadas = 0;
+    const destinoRowDeCadaOrigen = [];
     for (let i = 0; i < datosOrigen.length; i++) {
-      if (firmasDestino[firma_(datosOrigen[i])]) {
-        filasDuplicadas++;
-      } else {
-        break; // primera fila sin copia idéntica -- de aquí para abajo no se toca nada
+      const filaActual = datosOrigen[i];
+      const filaDestinoNum = filaDestinoPorIdentidad[firma_(filaActual, numColsIdentidad)];
+      if (!filaDestinoNum) break; // primera fila sin match en A:L -- de ahí para abajo no se toca nada
+
+      // ¿El personal siguió llenando M:V en Check-Ins después del
+      // archivado fallido? Si la fila completa ya no coincide con la copia
+      // en Base_de_Datos, hay que refrescarla ahí antes de borrar el
+      // original.
+      const filaDestinoActual = datosDestino[filaDestinoNum - 2];
+      if (firma_(filaActual, numCols) !== firma_(filaDestinoActual, numCols)) {
+        destino.getRange(filaDestinoNum, 1, 1, numCols).setValues([filaActual]);
+        filasActualizadas++;
       }
+
+      destinoRowDeCadaOrigen.push(filaDestinoNum);
+      filasDuplicadas++;
     }
 
     if (filasDuplicadas === 0) {
-      Logger.log('repararCheckInsDuplicadosEnBaseDeDatos: ninguna fila al principio de "' + CHECKIN_SHEET_NAME + '" tiene copia idéntica en "' + CHECKIN_ARCHIVE_SHEET_NAME + '". No se borró nada.');
+      Logger.log('repararCheckInsDuplicadosEnBaseDeDatos: ninguna fila al principio de "' + CHECKIN_SHEET_NAME + '" tiene una fila con la misma identidad (A:L) en "' + CHECKIN_ARCHIVE_SHEET_NAME + '". No se borró nada.');
       return;
+    }
+
+    if (filasActualizadas > 0) {
+      SpreadsheetApp.flush();
+      // Copia, verifica, y HASTA ENTONCES borra -- mismo principio que el
+      // resto del archivo: vuelve a leer Base_de_Datos y confirma que de
+      // verdad quedó igual antes de tocar Check-Ins.
+      const datosDestinoVerif = destino.getRange(2, 1, destino.getLastRow() - 1, numCols).getValues();
+      for (let i = 0; i < filasDuplicadas; i++) {
+        const verificacion = datosDestinoVerif[destinoRowDeCadaOrigen[i] - 2];
+        if (firma_(datosOrigen[i], numCols) !== firma_(verificacion, numCols)) {
+          Logger.log('repararCheckInsDuplicadosEnBaseDeDatos: ABORTADO, la fila ' + (2 + i) + ' de "' + CHECKIN_SHEET_NAME + '" no quedó igual en "' + CHECKIN_ARCHIVE_SHEET_NAME + '" después de actualizarla. NO se borró nada por seguridad.');
+          return;
+        }
+      }
     }
 
     Logger.log(
       "repararCheckInsDuplicadosEnBaseDeDatos: " + filasDuplicadas + ' fila(s) al principio de "' + CHECKIN_SHEET_NAME +
-      '" (filas 2 a ' + (filasDuplicadas + 1) + ') ya están idénticas en "' + CHECKIN_ARCHIVE_SHEET_NAME +
-      '" -- se van a borrar de "' + CHECKIN_SHEET_NAME + '". Quedan ' + (datosOrigen.length - filasDuplicadas) + " fila(s) sin tocar (no tenían copia idéntica)."
+      '" ya estaban en "' + CHECKIN_ARCHIVE_SHEET_NAME + '" (' + filasActualizadas + ' se refrescaron ahí primero porque el personal las había seguido llenando) -- se van a borrar de "' + CHECKIN_SHEET_NAME +
+      '". Quedan ' + (datosOrigen.length - filasDuplicadas) + " fila(s) sin tocar."
     );
 
     if (origen.getFilter()) {
@@ -776,7 +828,7 @@ function repararCheckInsDuplicadosEnBaseDeDatos() {
     }
     origen.deleteRows(2, filasDuplicadas);
 
-    Logger.log("repararCheckInsDuplicadosEnBaseDeDatos: listo, se borraron " + filasDuplicadas + " fila(s) duplicada(s) de \"" + CHECKIN_SHEET_NAME + "\".");
+    Logger.log("repararCheckInsDuplicadosEnBaseDeDatos: listo, se borraron " + filasDuplicadas + " fila(s) de \"" + CHECKIN_SHEET_NAME + "\".");
   } finally {
     lock.releaseLock();
   }
