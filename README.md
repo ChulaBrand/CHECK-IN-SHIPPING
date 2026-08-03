@@ -66,11 +66,13 @@ etc.) y no se toca ni se mezcla con este.
      > (Forklift, Door, Depa, Pallets, Clerk, PM, Comentarios, etc.).
      > Nunca borra filas de datos.
    - **configurarTriggerFiltro** -- la hoja se filtra sola cada minuto para
-     mostrar nada más las órdenes **activas de hoy**: de la madrugada
-     12am-5am también se incluye lo de ayer, y en cuanto Pallets o Shipout
-     ya tienen algo (cualquiera de las dos sola basta), esa orden se oculta
-     de la vista (ya quedó atendida). Es un filtro de vista: no borra ni
-     mueve nada, todo el histórico sigue ahí. Para refrescarlo a mano, corre
+     mostrar nada más las órdenes **activas de hoy**: el día "corta" a las
+     5am (antes de las 5am se ve ayer completo + lo de hoy que lleve la
+     madrugada; de las 5am en adelante, solo hoy), y en cuanto **Clerk,
+     Pallets y Shipout los tres** ya tienen algo (los tres a la vez, no
+     basta con que solo uno o dos estén llenos), esa orden se oculta de la
+     vista (ya quedó atendida). Es un filtro de vista: no borra ni mueve
+     nada, todo el histórico sigue ahí. Para refrescarlo a mano, corre
      **filtrarOrdenesDeHoy** directamente.
    - **configurarTriggerHoraSalida** -- activa que, al marcar el checkbox
      de la columna **Depa**, la columna **Hora de Salida** se llene sola
