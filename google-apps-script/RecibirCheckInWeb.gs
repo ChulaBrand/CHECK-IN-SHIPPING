@@ -52,9 +52,10 @@
  *   la vista las órdenes que ya no son de hoy (el día "corta" a las 5am:
  *   antes de las 5am se ve ayer completo + lo de hoy que lleve la
  *   madrugada; de las 5am en adelante, solo hoy), Y las que ya están
- *   atendidas (Clerk, Pallets Y Shipout los tres llenos a la vez -- ya no
- *   basta con que solo uno o dos lo estén). Es un filtro de vista: nunca
- *   borra ni mueve nada.
+ *   atendidas: Clerk, Pallets y Shipout los tres llenos, Y ADEMÁS el
+ *   checkbox de Depa (ya salió) marcado -- las cuatro cosas a la vez, ya
+ *   no basta con que falte cualquiera de ellas. Es un filtro de vista:
+ *   nunca borra ni mueve nada.
  * - archivarOrdenesCompletadas (semanal, lunes ~4am, una vez armado el
  *   trigger) mueve a la pestaña "Base_de_Datos" las órdenes que ya están
  *   100% completas (Forklift, Door, Pallets, Shipout, Clerk y PM llenos) Y
@@ -363,18 +364,18 @@ function filtrarOrdenesDeHoy() {
 
   filtro.setColumnFilterCriteria(1, criterioFecha); // columna A = Date
 
-  // Activas/inactivas: la fila NO se oculta hasta que Clerk, Pallets Y
-  // Shipout los tres ya tienen algo -- los tres a la vez, ya no basta con
-  // que solo uno o dos estén llenos. Va en una sola fórmula (no una
-  // condición por columna) porque necesitamos un OR de las tres celdas en
-  // blanco -- si se pusiera una condición ISBLANK por columna, Sheets las
-  // junta con AND entre columnas, que es la lógica contraria (ocultaría la
-  // fila en cuanto CUALQUIERA de las tres se llenara, no hasta que las tres
-  // estén llenas).
+  // Activas/inactivas: la fila NO se oculta hasta que Clerk, Pallets y
+  // Shipout los tres ya tienen algo, Y ADEMÁS ya salió (checkbox de Depa
+  // marcado) -- las cuatro cosas a la vez, ya no basta con que falte
+  // cualquiera de ellas. Va en una sola fórmula (no una condición por
+  // columna) porque necesitamos un OR -- si se pusiera una condición
+  // ISBLANK/checkbox por columna, Sheets las junta con AND entre columnas,
+  // que es la lógica contraria (ocultaría la fila en cuanto CUALQUIERA de
+  // las cuatro se llenara/marcara, no hasta que las cuatro estén listas).
   filtro.setColumnFilterCriteria(
     CHECKIN_COL_PALLETS,
     SpreadsheetApp.newFilterCriteria()
-      .whenFormulaSatisfied('=OR(ISBLANK($Q2), ISBLANK($R2), ISBLANK($S2))')
+      .whenFormulaSatisfied('=OR(ISBLANK($Q2), ISBLANK($R2), ISBLANK($S2), NOT($O2))')
       .build()
   );
 }
