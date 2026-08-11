@@ -65,7 +65,10 @@
  * - archivarTodoDiario (diario ~5am, una vez armado el trigger) mueve
  *   TODAS las filas a "Base_de_Datos" -- completas o no -- y las borra de
  *   "Check-Ins", que amanece vacía cada día. Mismo patrón de seguridad:
- *   copia primero, verifica, y solo entonces borra.
+ *   copia primero, verifica, y solo entonces borra (usando
+ *   checkinBorrarFilasSeguro_, que vacía con clearContent() en vez de
+ *   deleteRows() cuando borraría TODAS las filas -- Sheets no permite
+ *   dejar una hoja sin ninguna fila no congelada).
  * - runFormatOnNewRows_CheckIns_ corre sola después de cada envío del
  *   formulario (no hay que configurar nada): si le falta el formato o los
  *   menús desplegables/checkboxes de Forklift/Door/Pallets/Shipout a una
@@ -490,11 +493,7 @@ function archivarOrdenesCompletadas() {
       origen.getFilter().remove();
     }
 
-    const bloques = checkinToContiguousBlocks_(loteActual.map(function (f) { return f.filaReal; }));
-    bloques.sort(function (a, b) { return b.start - a.start; }); // de mayor a menor, para borrar sin desfasar índices
-    bloques.forEach(function (b) {
-      origen.deleteRows(b.start, b.end - b.start + 1);
-    });
+    checkinBorrarFilasSeguro_(origen, numCols, loteActual.map(function (f) { return f.filaReal; }));
 
     Logger.log("archivarOrdenesCompletadas: " + loteActual.length + " fila(s) movidas a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\".");
   } finally {
@@ -574,9 +573,13 @@ function archivarTodoDiario() {
       origen.getFilter().remove();
     }
 
-    // Todo el rango es un solo bloque contiguo (fila 2 a la última) --
-    // no hace falta checkinToContiguousBlocks_ aquí, se borra de un golpe.
-    origen.deleteRows(2, numRows);
+    // Todo el rango es un solo bloque contiguo (fila 2 a la última) -- y
+    // como es TODO lo que hay en Check-Ins, checkinBorrarFilasSeguro_ lo
+    // vacía con clearContent() en vez de deleteRows() (Sheets no permite
+    // borrar hasta la última fila no congelada).
+    const filasParaBorrar = [];
+    for (let i = 0; i < numRows; i++) filasParaBorrar.push(2 + i);
+    checkinBorrarFilasSeguro_(origen, numCols, filasParaBorrar);
 
     Logger.log("archivarTodoDiario: " + numRows + " fila(s) movidas a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\" y borradas de \"" + CHECKIN_SHEET_NAME + "\".");
   } finally {
@@ -695,11 +698,7 @@ function limpiarCheckInsDejando24Horas() {
     }
 
     const loteActual = filasParaBorrar.slice(0, CHECKIN_MAX_FILAS_POR_CORRIDA);
-    const bloques = checkinToContiguousBlocks_(loteActual);
-    bloques.sort(function (a, b) { return b.start - a.start; });
-    bloques.forEach(function (b) {
-      hoja.deleteRows(b.start, b.end - b.start + 1);
-    });
+    checkinBorrarFilasSeguro_(hoja, CHECKIN_HEADERS.length, loteActual);
 
     Logger.log("limpiarCheckInsDejando24Horas: " + loteActual.length + " fila(s) borradas de \"" + CHECKIN_SHEET_NAME + "\". Quedaron solo las de las últimas " + CHECKIN_HORAS_A_CONSERVAR + "h.");
   } finally {
@@ -854,7 +853,9 @@ function repararCheckInsDuplicadosEnBaseDeDatos() {
     if (origen.getFilter()) {
       origen.getFilter().remove();
     }
-    origen.deleteRows(2, filasDuplicadas);
+    const filasParaBorrar = [];
+    for (let i = 0; i < filasDuplicadas; i++) filasParaBorrar.push(2 + i);
+    checkinBorrarFilasSeguro_(origen, numCols, filasParaBorrar);
 
     Logger.log("repararCheckInsDuplicadosEnBaseDeDatos: listo, se borraron " + filasDuplicadas + " fila(s) de \"" + CHECKIN_SHEET_NAME + "\".");
   } finally {
@@ -1013,6 +1014,36 @@ function checkinToContiguousBlocks_(rows) {
   }
   out.push({ start: s, end: e });
   return out;
+}
+
+// Borra las filas indicadas (arreglo de números de fila, no necesariamente
+// contiguos) con cuidado del límite de Google Sheets que impide dejar una
+// hoja sin NINGUNA fila no congelada: si el conjunto a borrar cubre TODAS
+// las filas de datos que hay ahora mismo (fila 2 a la última), Sheets
+// rechaza el deleteRows con "Sorry, it is not possible to delete all
+// non-frozen rows" -- error real que causó que archivarTodoDiario fallara
+// SIEMPRE que Check-Ins tuviera solo lo que la propia corrida iba a mover
+// (o sea, casi siempre). Cuando pasa eso, en vez de borrar las filas se
+// les vacía el contenido con clearContent() -- mismo resultado (la hoja
+// "queda vacía") sin chocar con esa restricción.
+function checkinBorrarFilasSeguro_(hoja, numCols, filas) {
+  if (filas.length === 0) return;
+
+  const ultimaFilaConDatos = hoja.getLastRow();
+  const cubreTodasLasFilasDeDatos = filas.length >= ultimaFilaConDatos - 1; // fila 1 = encabezados, no cuenta
+
+  if (cubreTodasLasFilasDeDatos) {
+    filas.forEach(function (f) {
+      hoja.getRange(f, 1, 1, numCols).clearContent();
+    });
+    return;
+  }
+
+  const bloques = checkinToContiguousBlocks_(filas);
+  bloques.sort(function (a, b) { return b.start - a.start; }); // de mayor a menor, para borrar sin desfasar índices
+  bloques.forEach(function (b) {
+    hoja.deleteRows(b.start, b.end - b.start + 1);
+  });
 }
 
 // Herramienta MANUAL de una sola corrida: borra TODAS las reglas de
