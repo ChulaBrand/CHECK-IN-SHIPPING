@@ -62,13 +62,14 @@
  *   tienen más de 2 días -- copia primero, verifica, y solo entonces borra
  *   el original. Así "Check-Ins" no crece para siempre con órdenes ya
  *   cerradas.
- * - archivarTodoDiario (diario ~5am, una vez armado el trigger) mueve
- *   TODAS las filas a "Base_de_Datos" -- completas o no -- y las borra de
- *   "Check-Ins", que amanece vacía cada día. Mismo patrón de seguridad:
- *   copia primero, verifica, y solo entonces borra (usando
- *   checkinBorrarFilasSeguro_, que vacía con clearContent() en vez de
- *   deleteRows() cuando borraría TODAS las filas -- Sheets no permite
- *   dejar una hoja sin ninguna fila no congelada).
+ * - archivarTodoDiario (diario ~5am, una vez armado el trigger) mueve a
+ *   "Base_de_Datos" las órdenes de más de CHECKIN_HORAS_A_CONSERVAR horas
+ *   (24h) -- completas o no -- y las borra de "Check-Ins". Las de las
+ *   últimas 24h se quedan sin tocar, por si el personal las sigue
+ *   necesitando a la vista. Copia primero, verifica, y solo entonces borra
+ *   (usando checkinBorrarFilasSeguro_, que vacía con clearContent() en vez
+ *   de deleteRows() si algún día le tocara borrar TODAS las filas -- Sheets
+ *   no permite dejar una hoja sin ninguna fila no congelada).
  * - runFormatOnNewRows_CheckIns_ corre sola después de cada envío del
  *   formulario (no hay que configurar nada): si le falta el formato o los
  *   menús desplegables/checkboxes de Forklift/Door/Pallets/Shipout a una
@@ -547,18 +548,40 @@ function archivarTodoDiario() {
     const numRows = ultimaFila - 2 + 1;
     const datos = origen.getRange(2, 1, numRows, numCols).getValues();
 
+    // Deja las últimas CHECKIN_HORAS_A_CONSERVAR horas SIN tocar (por si
+    // el personal las sigue necesitando a la vista) -- solo mueve lo más
+    // viejo que eso, completo o no.
+    const ahora = new Date();
+    const limite = new Date(ahora.getTime() - CHECKIN_HORAS_A_CONSERVAR * 60 * 60 * 1000);
+
+    const filasParaArchivar = [];
+    const datosParaArchivar = [];
+    datos.forEach(function (fila, i) {
+      const fecha = fila[0]; // columna A
+      const esVieja = fecha instanceof Date ? fecha < limite : false;
+      if (esVieja) {
+        filasParaArchivar.push(2 + i);
+        datosParaArchivar.push(fila);
+      }
+    });
+
+    if (filasParaArchivar.length === 0) {
+      Logger.log("archivarTodoDiario: no hay filas de más de " + CHECKIN_HORAS_A_CONSERVAR + "h para mover.");
+      return;
+    }
+
     const destino = checkinGetArchiveSheet_();
     const destinoFilaAntes = destino.getLastRow();
 
     let copiaExitosa = false;
     try {
-      destino.getRange(destinoFilaAntes + 1, 1, numRows, numCols).setValues(datos);
+      destino.getRange(destinoFilaAntes + 1, 1, datosParaArchivar.length, numCols).setValues(datosParaArchivar);
       SpreadsheetApp.flush();
       const filasNuevasReales = destino.getLastRow() - destinoFilaAntes;
-      if (filasNuevasReales === numRows) {
+      if (filasNuevasReales === datosParaArchivar.length) {
         copiaExitosa = true;
       } else {
-        Logger.log("archivarTodoDiario: ABORTADO, se esperaban " + numRows + " filas nuevas en \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\" pero se detectaron " + filasNuevasReales + ". NO se borró nada de \"" + CHECKIN_SHEET_NAME + "\" por seguridad.");
+        Logger.log("archivarTodoDiario: ABORTADO, se esperaban " + datosParaArchivar.length + " filas nuevas en \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\" pero se detectaron " + filasNuevasReales + ". NO se borró nada de \"" + CHECKIN_SHEET_NAME + "\" por seguridad.");
       }
     } catch (error) {
       Logger.log("archivarTodoDiario: ERROR al copiar a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\": " + error + ". NO se borró nada de \"" + CHECKIN_SHEET_NAME + "\" por seguridad.");
@@ -573,15 +596,9 @@ function archivarTodoDiario() {
       origen.getFilter().remove();
     }
 
-    // Todo el rango es un solo bloque contiguo (fila 2 a la última) -- y
-    // como es TODO lo que hay en Check-Ins, checkinBorrarFilasSeguro_ lo
-    // vacía con clearContent() en vez de deleteRows() (Sheets no permite
-    // borrar hasta la última fila no congelada).
-    const filasParaBorrar = [];
-    for (let i = 0; i < numRows; i++) filasParaBorrar.push(2 + i);
-    checkinBorrarFilasSeguro_(origen, numCols, filasParaBorrar);
+    checkinBorrarFilasSeguro_(origen, numCols, filasParaArchivar);
 
-    Logger.log("archivarTodoDiario: " + numRows + " fila(s) movidas a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\" y borradas de \"" + CHECKIN_SHEET_NAME + "\".");
+    Logger.log("archivarTodoDiario: " + filasParaArchivar.length + " fila(s) de más de " + CHECKIN_HORAS_A_CONSERVAR + "h movidas a \"" + CHECKIN_ARCHIVE_SHEET_NAME + "\" y borradas de \"" + CHECKIN_SHEET_NAME + "\". Quedan " + (numRows - filasParaArchivar.length) + " fila(s) de las últimas " + CHECKIN_HORAS_A_CONSERVAR + "h.");
   } finally {
     lock.releaseLock();
   }

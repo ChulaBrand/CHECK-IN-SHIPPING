@@ -86,10 +86,10 @@ etc.) y no se toca ni se mezcla con este.
      de "Check-Ins". Así la hoja principal no crece para siempre con
      órdenes ya cerradas.
    - **configurarTriggerArchivadoDiario** -- activa la limpieza diaria
-     (~5am) que mueve a "Base_de_Datos" **TODAS** las órdenes que haya en
-     "Check-Ins" en ese momento -- completas o no -- y las borra de
-     "Check-Ins", que amanece vacía cada día. Mismo patrón de seguridad:
-     copia primero, verifica, y solo entonces borra.
+     (~5am) que mueve a "Base_de_Datos" las órdenes de **más de 24 horas**
+     -- completas o no -- y las borra de "Check-Ins". Las de las últimas
+     24h se quedan sin tocar. Mismo patrón de seguridad: copia primero,
+     verifica, y solo entonces borra.
 5. **Implementar → Nueva implementación**:
    - Tipo: **Aplicación web**
    - Ejecutar como: **Yo**
